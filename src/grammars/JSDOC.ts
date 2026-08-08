@@ -3,25 +3,22 @@ import fs from "fs";
 import * as ohm from "ohm-js";
 
 export type DocComment = {
+    type: "doc-comment";
     raw: string;
     tags: (string | Tag)[];
 };
 
 export type Tag = {
-    at: string;
+    name: string;
     arguments: string[];
 };
-
-const TAGS_TO_IGNORE = [
-    "@link"
-];
 
 const file = fs.readFileSync("grammars/JSDOC.ohm", "utf-8");
 
 function formatRaw(raw: string): string {
     return raw
         .split("\n")
-        .map((line, index) => index === 0 ? line.trim() : ` ${line.trim()}`)
+        .map((line, index) => index == 0 ? line.trim() : ` ${line.trim()}`)
         .join("\n");
 }
 
@@ -30,6 +27,7 @@ export const JSDOC = ohm.grammar(file);
 export const semanticsJSDOC = JSDOC.createSemantics().addOperation("eval", {
     DocComment(_, body, _2) {
         return {
+            type: "doc-comment",
             raw: formatRaw(this.sourceString),
             ...body.eval()
         };
@@ -39,8 +37,7 @@ export const semanticsJSDOC = JSDOC.createSemantics().addOperation("eval", {
         return {
             tags: items.children
                 .filter(item => item.ctorName == "Tag")
-                .map(at => at.eval())
-                .filter(({ tag }) => !TAGS_TO_IGNORE.includes(tag))
+                .map(name => name.eval())
         };
     },
 
@@ -50,16 +47,20 @@ export const semanticsJSDOC = JSDOC.createSemantics().addOperation("eval", {
         }
 
         return {
-            at: tag.child(0).sourceString,
+            name: tag.child(0).sourceString,
             arguments: tag.children.slice(1).map(argument => argument.eval())
         };
     },
 
-    TypeInBraces(_, _type, _2) {
-        return _type.sourceString;
+    TypeInBraces(_, type, _2) {
+        return type.sourceString;
     },
 
     id(_, _1) {
+        return this.sourceString;
+    },
+
+    description(_) {
         return this.sourceString;
     }
 });

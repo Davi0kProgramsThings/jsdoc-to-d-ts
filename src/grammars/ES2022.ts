@@ -6,7 +6,7 @@ import { JSDOC, semanticsJSDOC } from "./JSDOC.js";
 
 import type { DocComment } from "./JSDOC.js";
 
-export type File = Class[];
+export type File = (DocComment | Class)[];
 
 export type Class = {
     type: "class";
@@ -31,8 +31,8 @@ export const ES2022 = ohm.grammar(file, { JSDOC });
 export const semanticsES2022 = ES2022.extendSemantics(semanticsJSDOC).extendOperation<any>("eval", {
     File(items) {
         return items.children
-            .filter(item => item.ctorName == "Class")
-            .map(_class => _class.eval());
+            .filter(item => ["Class", "DocComment"].includes(item.ctorName))
+            .map(item => item.eval());
     },
 
     Class(doc, _export, _2, id, _4, body, _6) {

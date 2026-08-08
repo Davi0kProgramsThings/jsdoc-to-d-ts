@@ -1,13 +1,27 @@
 JSDOC {
     DocComment = "/**" Body "*/"
+    
     Body = (Tag | ~"*/" any)*
-    Tag = Internal | Interface | Abstract | Implements | Param | Returns
-    Internal = "@internal"
-    Interface = "@interface"
-    Abstract = "@abstract"
-    Implements = "@implements" TypeInBraces
-    Param = "@param" TypeInBraces id
-    Returns = "@returns" TypeInBraces
+
+    Tag = TagWithZeroArguments | TagWithOneArgument | TagWithTwoArguments | TagWithThreeArguments
+
+    TagWithZeroArguments = "@internal"
+                         | "@interface"
+                         | "@abstract"
+                         | "@protected"
+                         | "@private"
+
+    TagWithOneArgument = "@implements" TypeInBraces
+                       | "@returns" TypeInBraces
+
+    TagWithTwoArguments = "@param" TypeInBraces id
+                        | "@typedef" TypeInBraces id
+    
+    TagWithThreeArguments = "@property" TypeInBraces id description
+
     TypeInBraces = "{" (~"}" any)* "}"
+
     id = (letter | "_" | "$") (letter | digit | "_" | "$")*
+
+    description = (~"*/" ~"@" any)*
 }

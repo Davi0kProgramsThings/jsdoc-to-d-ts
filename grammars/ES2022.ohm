@@ -1,5 +1,5 @@
 ES2022 <: JSDOC {
-    File = (Class | ~Class any)*
+    File = (Class | DocComment | ~Class ~DocComment any)*
     Class = DocComment? Export? "class" id "{" ClassBody "}"
     Export = "export" "default"?
     ClassBody = Method*
