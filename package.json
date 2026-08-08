@@ -1,6 +1,16 @@
 {
-  "main": "src/index.js",
-  "dependencies": {
-    "ohm-js": "17.5.0"
-  }
+    "name": "jsdoc-to-d-ts",
+    "version": "1.0.0-alpha.1",
+    "main": "build/index.js",
+    "type": "module",
+    "scripts": {
+        "build": "tsc"
+    },
+    "dependencies": {
+        "ohm-js": "17.5.0"
+    },
+    "devDependencies": {
+        "@types/node": "26.2.0",
+        "typescript": "7.0.2"
+    }
 }

@@ -1,12 +1,13 @@
 JSDOC {
     DocComment = "/**" Body "*/"
-    Body = (At | ~"*/" any)*
-    At = Interface | Abstract | Implements | Param | Returns
+    Body = (Tag | ~"*/" any)*
+    Tag = Internal | Interface | Abstract | Implements | Param | Returns
+    Internal = "@internal"
     Interface = "@interface"
     Abstract = "@abstract"
-    Implements = "@implements" IdInBraces
-    Param = "@param" IdInBraces id
-    Returns = "@returns" IdInBraces
-    IdInBraces = "{" id "}"
+    Implements = "@implements" TypeInBraces
+    Param = "@param" TypeInBraces id
+    Returns = "@returns" TypeInBraces
+    TypeInBraces = "{" (~"}" any)* "}"
     id = (letter | "_" | "$") (letter | digit | "_" | "$")*
 }

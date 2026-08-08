@@ -1,0 +1,15 @@
+{
+    "include": [
+        "src/**/*"
+    ],
+    "compilerOptions": {
+        "target": "ES2022",
+        "module": "nodenext",
+        "moduleResolution": "nodenext",
+        "declaration": true,
+        "rootDir": "src",
+        "outDir": "build",
+        "sourceMap": true,
+        "types": ["node"]
+    }
+}
