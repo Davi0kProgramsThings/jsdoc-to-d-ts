@@ -1,0 +1,6 @@
+{
+  "main": "src/index.js",
+  "dependencies": {
+    "ohm-js": "17.5.0"
+  }
+}

@@ -1,0 +1,12 @@
+JSDOC {
+    DocComment = "/**" Body "*/"
+    Body = (At | ~"*/" any)*
+    At = Interface | Abstract | Implements | Param | Returns
+    Interface = "@interface"
+    Abstract = "@abstract"
+    Implements = "@implements" IdInBraces
+    Param = "@param" IdInBraces id
+    Returns = "@returns" IdInBraces
+    IdInBraces = "{" id "}"
+    id = (letter | "_" | "$") (letter | digit | "_" | "$")*
+}
