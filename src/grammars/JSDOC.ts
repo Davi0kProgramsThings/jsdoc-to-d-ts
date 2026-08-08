@@ -18,11 +18,21 @@ const TAGS_TO_IGNORE = [
 
 const file = fs.readFileSync("grammars/JSDOC.ohm", "utf-8");
 
+function formatRaw(raw: string): string {
+    return raw
+        .split("\n")
+        .map((line, index) => index === 0 ? line.trim() : ` ${line.trim()}`)
+        .join("\n");
+}
+
 export const JSDOC = ohm.grammar(file);
 
 export const semanticsJSDOC = JSDOC.createSemantics().addOperation("eval", {
     DocComment(_, body, _2) {
-        return { raw: this.sourceString, ...body.eval() };
+        return {
+            raw: formatRaw(this.sourceString),
+            ...body.eval()
+        };
     },
 
     Body(items) {

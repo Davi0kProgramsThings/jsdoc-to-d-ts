@@ -6,13 +6,6 @@ import type { Tag } from "./grammars/JSDOC.js";
 
 import type { File, Class, Method } from "./grammars/ES2022.js";
 
-function formatRaw(raw: string): string {
-    return raw
-        .split("\n")
-        .map((line, index) => index === 0 ? line.trim() : ` ${line.trim()}`)
-        .join("\n");
-}
-
 function getParam(method: Method, id: string): Tag | undefined {
     return <Tag | undefined> method.doc?.tags
         .find(tag => tag.at == "@param" && (<Tag> tag).arguments[1] == id);
@@ -24,64 +17,41 @@ function getReturns(method: Method): Tag | undefined {
 }
 
 function transpileClass(_class: Class): string {
-    let output = ""
+    const _export = !_class.export!.default ? "export" : "export default";
 
-    if (_class.doc) {
-        output += `${formatRaw(_class.doc.raw)}\n`
-    }
+    const keyword = _class.doc?.tags.includes("@interface")
+        ? "interface"
+        : _class.doc?.tags.includes("@abstract")
+            ? "abstract class"
+            : "class";
 
-    output += !_class.export!.default ? "export " : "export default ";
+    const methods = _class.methods
+        .filter(method => !method.doc?.tags.includes("@internal"))
+        .map(method => transpileMethod(method).replace(/^(?!\s*$)/gm, "\t"))
+        .join("\n");
 
-    if (_class.doc?.tags.includes("@interface")) {
-        output += "interface ";
-    }
-    else if (_class.doc?.tags.includes("@abstract")) {
-        output += "abstract class ";
-    }
-    else {
-        output += "class ";
-    }
+    const raw = _class.doc?.raw
 
-    output += `${_class.id} {\n`;
+    const output = `${_export} ${keyword} ${_class.id} {\n${methods}\n}`
 
-    for (const method of _class.methods) {
-        if (method.doc?.tags.includes("@internal")) {
-            continue;
-        }
-
-        output += transpileMethod(method)
-            .replace(/^(?!\s*$)/gm, "\t");
-    }
-
-    output += "}";
-
-    return output;
+    return raw ? `${raw}\n${output}` : output
 }
 
 function transpileMethod(method: Method): string {
-    let output = ""
-
-    if (method.doc) {
-        output += `${formatRaw(method.doc.raw)}\n`;
-    }
-
-    output += `${method.id}(`;
-
-    for (const [index, argument] of method.arguments.entries()) {
-        const param = getParam(method, argument);
-
-        output += `${argument}: ${param ? param.arguments[0] : "any"}`;
-
-        if (index < method.arguments.length - 1) {
-            output += ", ";
-        }
-    }
+    const params = method.arguments
+        .map(argument => {
+            const param = getParam(method, argument);
+            return `${argument}: ${param ? param.arguments[0] : "any"}`;
+        })
+        .join(", ");
 
     const returns = getReturns(method);
 
-    output += `): ${returns ? returns.arguments[0] : "any"};\n`;
+    const raw = method.doc?.raw
 
-    return output;
+    const output = `${method.id}(${params}): ${returns ? returns.arguments[0] : "any"};`
+
+    return raw ? `${raw}\n${output}` : output
 }
 
 function main(input: string) {
