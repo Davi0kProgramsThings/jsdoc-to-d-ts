@@ -4,24 +4,44 @@ import * as ohm from "ohm-js";
 
 import { JSDOC, semanticsJSDOC } from "./JSDOC.js";
 
-import type { DocComment } from "./JSDOC.js";
+import type { DocCommentDescriptor } from "./JSDOC.js";
 
-export type File = (DocComment | Class)[];
+export type FileDescriptor = (ConstantDescriptor | ClassDescriptor | DocCommentDescriptor)[];
 
-export type Class = {
-    type: "class";
-    doc?: DocComment;
+export type ConstantDescriptor = {
+    type: "constant";
+    doc?: DocCommentDescriptor;
+    export?: ExportDescriptor;
+    keyword?: "var" | "let" | "const";
     id: string;
-    methods: Method[];
-    export?: {
-        default: boolean;
-    };
 };
 
-export type Method = {
-    doc?: DocComment;
+export type ClassDescriptor = {
+    type: "class";
+    doc?: DocCommentDescriptor;
+    export?: ExportDescriptor;
+    id: string;
+    extends: string[];
+    members: MemberDescriptor[];
+    methods: Omit<MethodDescriptor, "members">[];
+};
+
+export type MemberDescriptor = {
+    doc?: DocCommentDescriptor;
+    private: boolean;
+    id: string;
+};
+
+export type MethodDescriptor = {
+    doc?: DocCommentDescriptor;
+    async: boolean;
     id: string;
     arguments: string[];
+    members: MemberDescriptor[];
+};
+
+export type ExportDescriptor = {
+    default: boolean;
 };
 
 const file = fs.readFileSync("grammars/ES2022.ohm", "utf-8");
@@ -29,19 +49,121 @@ const file = fs.readFileSync("grammars/ES2022.ohm", "utf-8");
 export const ES2022 = ohm.grammar(file, { JSDOC });
 
 export const semanticsES2022 = ES2022.extendSemantics(semanticsJSDOC).extendOperation<any>("eval", {
-    File(items) {
-        return items.children
-            .filter(item => ["Class", "DocComment"].includes(item.ctorName))
-            .map(item => item.eval());
+    File(file) {
+        return file.children
+            .filter(child => child.ctorName == "Component")
+            .map(child => child.eval());
     },
 
-    Class(doc, _export, _2, id, _4, body, _6) {
+    Constant_export(doc, _export, keyword, id) {
+        return {
+            type: "constant",
+            doc: doc.eval(),
+            export: _export.numChildren > 0 ? { default: false } : undefined,
+            keyword: keyword.sourceString,
+            id: id.eval()
+        };
+    },
+
+    Constant_export_default(doc, _1, _2, id) {
+        return {
+            type: "constant",
+            doc: doc.eval(),
+            export: { default: true },
+            keyword: "const",
+            id: id.eval()
+        };
+    },
+
+    Class(doc, _export, _2, id, _4, _extends, body) {
+        const { members, methods } = body.eval();
+
         return {
             type: "class",
-            doc: doc.numChildren > 0 ? doc.child(0).eval() : undefined,
-            export: _export.numChildren > 0 ? _export.child(0).eval() : undefined,
+            doc: doc.eval(),
+            export: _export.eval(),
             id: id.eval(),
-            methods: body.eval()
+            extends: _extends.eval(),
+            members,
+            methods
+        }
+    },
+
+    ClassBody(_, body, _2) {
+       const members = [];
+
+       const methods = [];
+
+        for (const child of body.children) {
+            switch (child.ctorName) {
+                case "Member":
+                    members.push(child.eval());
+                    break;
+
+                case "Method":
+                    methods.push(child.eval());
+                    break;
+            }
+        }
+
+        for (const method of methods) {
+            for (const member of members) {
+                const index = members.findIndex(({ id }) => id == member.id);
+
+                if (!members[index] || (!members[index].doc && member.doc)) {
+                    index >= 0
+                        ? members[index] = member
+                        : members.push(member);
+                }
+            }
+
+            delete method.members;
+        }
+
+        return { members, methods };
+    },
+
+    Member(doc, hashtag, id, _3) {
+        return {
+            doc: doc.eval(),
+            private: hashtag.numChildren > 0,
+            id: id.eval()
+        };
+    },
+
+    Method(doc, _async, id, _3, _arguments, _5, block) {
+        return {
+            doc: doc.eval(),
+            async: _async.numChildren > 0,
+            id: id.eval(),
+            arguments: _arguments.eval(),
+            members: block.eval()
+        };
+    },
+
+    Block(_, body, _2) {
+        const members = [];
+
+        for (const child of body.children) {
+            switch (child.ctorName) {
+                case "MemberDefinition":
+                    members.push(child.eval());
+                    break;
+
+                case "Block":
+                    members.push(...child.eval());
+                    break;
+            }
+        }
+
+        return members;
+    },
+
+    MemberDefinition(doc, _1, _2, hashtag, id, _5) {
+        return {
+            doc: doc.eval(),
+            private: hashtag.numChildren > 0,
+            id: id.eval()
         };
     },
 
@@ -49,21 +171,5 @@ export const semanticsES2022 = ES2022.extendSemantics(semanticsJSDOC).extendOper
         return {
             default: _default.numChildren > 0
         };
-    },
-
-    ClassBody(methods) {
-        return methods.children.map(method => method.eval());
-    },
-
-    Method(doc, _1, id, _3, _arguments, _5, _6, _7, _8) {
-        return {
-            doc: doc.numChildren > 0 ? doc.child(0).eval() : undefined,
-            id: id.eval(),
-            arguments: _arguments.eval()
-        };
-    },
-
-    ArgumentList(ids) {
-        return ids.asIteration().children.map(id => id.sourceString);
     }
 });

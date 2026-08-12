@@ -7,6 +7,7 @@
         "build": "tsc"
     },
     "dependencies": {
+        "handlebars": "4.7.9",
         "ohm-js": "17.5.0"
     },
     "devDependencies": {

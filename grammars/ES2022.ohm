@@ -1,8 +1,14 @@
 ES2022 <: JSDOC {
-    File = (Class | DocComment | ~Class ~DocComment any)*
-    Class = DocComment? Export? "class" id "{" ClassBody "}"
+    File = (Component | ~Component any)*
+    Component = Constant | Class | DocComment
+    Constant = DocComment? "export"? Keyword id  -- export
+             | DocComment? "export" "default" id -- export_default
+    Keyword = "var" | "let" | "const"
+    Class = DocComment? Export? "class" id ("extends" ListOf<id, ",">)? ClassBody
+    ClassBody = "{" (Method | Member)* "}"
+    Member = DocComment? "#"? id ";"?
+    Method = DocComment? "async"? id "(" ListOf<id, ","> ")" Block
+    Block = "{" (MemberDefinition | Block | ~"}" any)* "}"
+    MemberDefinition = DocComment? "this" "." "#"? id "=" 
     Export = "export" "default"?
-    ClassBody = Method*
-    Method = DocComment? "async"? id "(" ArgumentList ")" "{" (~"}" any)* "}"
-    ArgumentList = ListOf<id, ",">
 }

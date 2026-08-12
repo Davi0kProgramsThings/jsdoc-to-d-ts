@@ -23,5 +23,5 @@ JSDOC {
 
     id = (letter | "_" | "$") (letter | digit | "_" | "$")*
 
-    description = (~"*/" ~"@" any)*
+    description = (~"@" ~"*/" any)*
 }

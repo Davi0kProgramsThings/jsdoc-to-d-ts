@@ -1,0 +1,48 @@
+// This file has been automatically generated with jsdoc-to-d-ts
+{{#each constants}}
+{{#if documentation}}
+{{documentation}}
+{{/if}}
+{{#unless export.default}}
+export {{keyword}} {{id}}: {{type}};
+{{else}}
+declare const {{id}}: {{type}};
+export default {{id}};
+{{/unless}}
+{{/each}}
+{{#each classes}}
+{{#if documentation}}
+{{documentation}}
+{{/if}}
+export {{#if export.default}}default {{/if}}{{keyword}} {{id}} {{#if extends.length}}extends {{join extends ", "}} {{/if}}{{#if implements.length}}implements {{join implements ", "}} {{/if}}{
+    {{#each members}}
+    {{#if documentation}}
+    {{documentation}}
+    {{/if}}
+    {{#if (eq visibility "protected")}}protected {{/if}}{{id}}: {{type}};
+    {{/each}}
+    {{#each methods}}
+    {{#if documentation}}
+    {{documentation}}
+    {{/if}}
+    {{#if (eq visibility "protected")}}protected {{/if}}{{#if abstract}}abstract {{/if}}{{id}}({{#each arguments}}{{id}}{{#if optional}}?{{/if}}: {{type}}{{#unless @last}}, {{/unless}}{{/each}}): {{returns}};
+    {{/each}}
+}
+{{/each}}
+{{#each types}}
+{{#if description}}
+/**
+ * {{description}}
+ */
+{{/if}}
+export type {{id}} = {{#unless properties.length}}{{type}}{{else}}{
+    {{#each properties}}
+    {{#if description}}
+    /**
+     * {{description}}
+     */
+    {{/if}}
+    {{id}}{{#if optional}}?{{/if}}: {{type}};
+    {{/each}}
+}{{/unless}};
+{{/each}}
