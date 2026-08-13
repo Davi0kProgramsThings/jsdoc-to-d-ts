@@ -17,7 +17,7 @@ ES2022 <: JSDOC {
     Class = DocComment? Export? "class" id ("extends" id)? ClassBody
     ClassBody = "{" (Method | Get | Set | Member | ~"}" any)* "}"
     Member = DocComment? "static"? "#"? id
-    Method = DocComment? "static"? "async"? "#"? id "(" ListOf<Argument, ","> ")" Block
+    Method = DocComment* "static"? "async"? "#"? id "(" ListOf<Argument, ","> ")" Block
     Get = DocComment? "get" "#"? id "(" ")" Block
     Set = DocComment? "set" "#"? id "(" id ")" Block
     Block = "{" (MemberDefinition | Block | ~"}" any)* "}"

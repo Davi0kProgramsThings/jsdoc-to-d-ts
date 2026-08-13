@@ -10,6 +10,7 @@ JSDOC {
                          | "@abstract"
                          | "@protected"
                          | "@private"
+                         | "@overload"
 
     TagWithOneArgument = "@implements" TypeInBraces
                        | "@type" TypeInBraces

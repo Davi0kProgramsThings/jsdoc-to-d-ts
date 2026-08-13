@@ -16,12 +16,12 @@ function getKeyword(classDescriptor: ClassDescriptor): "class" | "abstract class
     return "class";
 }
 
-function getVisibilityModifier(descriptor: MemberDescriptor | MethodDescriptor): "public" | "protected" | "private" {
-    if (descriptor.doc?.getTag("@private")) {
+function getVisibilityModifier(docCommentDescriptor?: DocCommentDescriptor): "public" | "protected" | "private" {
+    if (docCommentDescriptor?.getTag("@private")) {
         return "private";
     }
 
-    if (descriptor.doc?.getTag("@protected")) {
+    if (docCommentDescriptor?.getTag("@protected")) {
         return "protected";
     }
 
@@ -107,17 +107,37 @@ function preProcessClass(classDescriptor: ClassDescriptor): Class {
             : []
     );
 
+    const members = classDescriptor.members
+        .filter(memberDescriptor => !memberDescriptor.doc?.getTag("@private") && !memberDescriptor.private)
+        .map(memberDescriptor => preProcessClassMember(memberDescriptor));
+
+    const methods = [];
+
+    for (const methodDecriptor of classDescriptor.methods) {
+        if (methodDecriptor.private) {
+            continue;
+        }
+
+        for (const [index, docCommentDescriptor] of methodDecriptor.docs.entries()) {
+            if (docCommentDescriptor.getTag("@private") || index == methodDecriptor.docs.length - 1) {
+                continue;
+            }
+
+            if (docCommentDescriptor.getTag("@overload")) {
+                methods.push(preProcessClassMethod(docCommentDescriptor, methodDecriptor));
+            }
+        }
+
+        methods.push(preProcessClassMethod(methodDecriptor.docs[methodDecriptor.docs.length - 1], methodDecriptor));
+    }
+
     return {
         id: classDescriptor.id,
         keyword: getKeyword(classDescriptor),
         extends: [ ...!classDescriptor.extends ? _extends : _extends.add(classDescriptor.extends)],
         implements: [..._implements],
-        members: classDescriptor.members
-            .filter(memberDescriptor => !memberDescriptor.doc?.getTag("@private") && !memberDescriptor.private)
-            .map(memberDescriptor => preProcessClassMember(memberDescriptor)),
-        methods: classDescriptor.methods
-            .filter(methodDescriptor => !methodDescriptor.doc?.getTag("@private") && !methodDescriptor.private)
-            .map(methodDescriptor => preProcessClassMethod(methodDescriptor)),
+        members,
+        methods,
         documentation: classDescriptor.doc?.raw,
         genericTypes: classDescriptor.doc?.getTags("@template").map(({ arguments: [_type, id, _default] }) => ({
             id,
@@ -135,14 +155,14 @@ function preProcessClassMember(memberDescriptor: MemberDescriptor): Member {
         id: memberDescriptor.id,
         type: memberDescriptor.doc?.getTag("@type")?.arguments[0] ?? "any",
         static: memberDescriptor.static,
-        visibility: getVisibilityModifier(memberDescriptor),
+        visibility: getVisibilityModifier(memberDescriptor.doc),
         documentation: memberDescriptor.doc?.raw
     };
 }
 
-function preProcessClassMethod(methodDescriptor: Omit<MethodDescriptor, "memberDefinitions">): Method {
+function preProcessClassMethod(docCommentDescriptor: DocCommentDescriptor | undefined, methodDescriptor: Omit<MethodDescriptor, "docs" | "memberDefinitions">): Method {
     const _arguments = methodDescriptor.arguments.map((argument, index) => {
-        const param = methodDescriptor.doc?.getTags("@param")[index]
+        const param = docCommentDescriptor?.getTags("@param")[index]
 
         const isOptional = param?.arguments[1].startsWith("[") && param?.arguments[1].endsWith("]");
 
@@ -156,19 +176,19 @@ function preProcessClassMethod(methodDescriptor: Omit<MethodDescriptor, "memberD
     const _returns =  methodDescriptor.id == "constructor" || methodDescriptor.property == "set"
         ? undefined
         : methodDescriptor.property == "get"
-            ? methodDescriptor.doc?.getTag("@type")?.arguments[0] ?? "any"
-            : methodDescriptor.doc?.getTag("@returns")?.arguments[0] ?? "any";
+            ? docCommentDescriptor?.getTag("@type")?.arguments[0] ?? "any"
+            : docCommentDescriptor?.getTag("@returns")?.arguments[0] ?? "any";
 
     return {
         id: methodDescriptor.id,
         static: methodDescriptor.static,
-        visibility: getVisibilityModifier(methodDescriptor),
-        abstract: !!methodDescriptor.doc?.getTag("@abstract"),
+        visibility: getVisibilityModifier(docCommentDescriptor),
+        abstract: !!docCommentDescriptor?.getTag("@abstract"),
         arguments: _arguments,
         returns: _returns,
         property: methodDescriptor.property,
-        documentation: methodDescriptor.doc?.raw,
-        genericTypes: methodDescriptor.doc?.getTags("@template").map(({ arguments: [_type, id, _default] }) => ({
+        documentation: docCommentDescriptor?.raw,
+        genericTypes: docCommentDescriptor?.getTags("@template").map(({ arguments: [_type, id, _default] }) => ({
             id,
             type: _type,
             default: _default

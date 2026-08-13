@@ -47,7 +47,7 @@ export type MemberDescriptor = {
 
 export type MethodDescriptor = {
     property?: "get" | "set";
-    doc?: DocCommentDescriptor;
+    docs: DocCommentDescriptor[];
     static: boolean;
     async: boolean;
     private: boolean;
@@ -201,9 +201,9 @@ export const semanticsES2022 = ES2022.extendSemantics(semanticsJSDOC).extendOper
         };
     },
 
-    Method(doc, _static, _async, hashtag, id, _5, _arguments, _7, block) {
+    Method(docs, _static, _async, hashtag, id, _5, _arguments, _7, block) {
         return {
-            doc: doc.eval(),
+            docs: docs.eval(),
             static: _static.numChildren > 0,
             async: _async.numChildren > 0,
             private: hashtag.numChildren > 0,
@@ -216,7 +216,7 @@ export const semanticsES2022 = ES2022.extendSemantics(semanticsJSDOC).extendOper
     Get(doc, _1, hashtag, id, _4, _5, block) {
         return {
             property: "get",
-            doc: doc.eval(),
+            docs: [doc.eval()],
             async: false,
             private: hashtag.numChildren > 0,
             id: id.eval(),
@@ -228,7 +228,7 @@ export const semanticsES2022 = ES2022.extendSemantics(semanticsJSDOC).extendOper
     Set(doc, _1, hashtag, id, _4, argument, _6, block) {
         return {
             property: "set",
-            doc: doc.eval(),
+            docs: [doc.eval()],
             async: false,
             private: hashtag.numChildren > 0,
             id: id.eval(),
