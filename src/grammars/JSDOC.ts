@@ -72,7 +72,7 @@ export const semanticsJSDOC = JSDOC.createSemantics().addOperation("eval", {
     },
 
     TypeInBraces(_, type, _2) {
-        return type.sourceString;
+        return type.sourceString.replaceAll("*", " ");
     },
 
     id(_, _1) {
