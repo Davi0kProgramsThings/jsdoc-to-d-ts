@@ -119,6 +119,11 @@ function preProcessClass(classDescriptor: ClassDescriptor): Class {
             .filter(methodDescriptor => !methodDescriptor.doc?.getTag("@private") && !methodDescriptor.private)
             .map(methodDescriptor => preProcessClassMethod(methodDescriptor)),
         documentation: classDescriptor.doc?.raw,
+        genericTypes: classDescriptor.doc?.getTags("@template").map(({ arguments: [_type, id, _default] }) => ({
+            id,
+            type: _type,
+            default: _default
+        })),
         export: {
             default: classDescriptor.export!.default
         }
@@ -162,7 +167,12 @@ function preProcessClassMethod(methodDescriptor: Omit<MethodDescriptor, "memberD
         arguments: _arguments,
         returns: _returns,
         property: methodDescriptor.property,
-        documentation: methodDescriptor.doc?.raw
+        documentation: methodDescriptor.doc?.raw,
+        genericTypes: methodDescriptor.doc?.getTags("@template").map(({ arguments: [_type, id, _default] }) => ({
+            id,
+            type: _type,
+            default: _default
+        }))
     };
 }
 

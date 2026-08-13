@@ -3,7 +3,7 @@ JSDOC {
     
     Body = (Tag | ~"*/" any)*
 
-    Tag = TagWithZeroArguments | TagWithOneArgument | TagWithTwoArguments | TagWithThreeArguments
+    Tag = TagWithZeroArguments | TagWithOneArgument | TagWithTwoArguments | TagWithThreeArguments | Template
 
     TagWithZeroArguments = "@internal"
                          | "@interface"
@@ -20,7 +20,12 @@ JSDOC {
     
     TagWithThreeArguments = "@property" TypeInBraces (id | optionalId) description
 
-    TypeInBraces = "{" (~"}" any)* "}"
+    Template = "@template" TypeInBraces? id                                          -- template
+             | "@template" TypeInBraces? "[" id "=" (TypeInBrackets | ~"]" any)* "]" -- templateWithDefault
+
+    TypeInBrackets = "[" (TypeInBrackets | ~"]" any)* "]"
+
+    TypeInBraces = "{" (TypeInBraces | ~"}" any)* "}"
 
     id = (letter | "_" | "$") (letter | digit | "_" | "$")*
 

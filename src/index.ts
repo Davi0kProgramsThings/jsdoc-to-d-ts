@@ -56,6 +56,10 @@ function main(input: string) {
     }
 }
 
+class T<A extends string = "lol"> {
+
+}
+
 const input = process.argv[2];
 
 main(input);

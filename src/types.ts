@@ -42,6 +42,11 @@ export type Class = {
     members: Member[];
     methods: Method[];
     documentation?: string;
+    genericTypes?: {
+        id: string;
+        type?: string;
+        default?: string;
+    }[];
     export: {
         default: boolean;
     };
@@ -64,6 +69,11 @@ export type Method = {
     returns?: string;
     property?: "get" | "set",
     documentation?: string;
+    genericTypes?: {
+        id: string;
+        type?: string;
+        default?: string;
+    }[];
 };
 
 export type Argument = {

@@ -14,7 +14,7 @@ export default {{id}};
 {{#if documentation}}
 {{indent documentation 0}}
 {{/if}}
-export {{#if export.default}}default {{/if}}{{keyword}} {{id}} {{#if extends.length}}extends {{join extends ", "}} {{/if}}{{#if implements.length}}implements {{join implements ", "}} {{/if}}{
+export {{#if export.default}}default {{/if}}{{keyword}} {{id}}{{#if genericTypes}}<{{#each genericTypes}}{{id}}{{#if type}} extends {{type}}{{/if}}{{#if default}} = {{default}}{{/if}}{{#unless @last}}, {{/unless}}{{/each}}>{{/if}} {{#if extends.length}}extends {{join extends ", "}} {{/if}}{{#if implements.length}}implements {{join implements ", "}} {{/if}}{
     {{#each members}}
     {{#if documentation}}
 {{indent documentation 1}}
@@ -25,7 +25,7 @@ export {{#if export.default}}default {{/if}}{{keyword}} {{id}} {{#if extends.len
     {{#if documentation}}
 {{indent documentation 1}}
     {{/if}}
-    {{#if (eq visibility "protected")}}protected {{/if}}{{#if static}}static {{/if}}{{#if abstract}}abstract {{/if}}{{#if property}}{{property}} {{/if}}{{id}}({{#each arguments}}{{id}}{{#if optional}}?{{/if}}: {{type}}{{#unless @last}}, {{/unless}}{{/each}}){{#if returns}}: {{returns}}{{/if}};
+    {{#if (eq visibility "protected")}}protected {{/if}}{{#if static}}static {{/if}}{{#if abstract}}abstract {{/if}}{{#if property}}{{property}} {{/if}}{{id}}{{#if genericTypes}}<{{#each genericTypes}}{{id}}{{#if type}} extends {{type}}{{/if}}{{#if default}} = {{default}}{{/if}}{{#unless @last}}, {{/unless}}{{/each}}>{{/if}}({{#each arguments}}{{id}}{{#if optional}}?{{/if}}: {{type}}{{#unless @last}}, {{/unless}}{{/each}}){{#if returns}}: {{returns}}{{/if}};
     {{/each}}
 }
 {{/each}}

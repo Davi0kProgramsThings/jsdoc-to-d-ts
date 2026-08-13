@@ -43,9 +43,27 @@ export const semanticsJSDOC = JSDOC.createSemantics().addOperation("eval", {
     },
 
     Tag(tag) {
+        if (tag.ctorName == "Template") {
+            return tag.eval();
+        }
+
         return {
             name: tag.child(0).sourceString,
             arguments: tag.children.slice(1).map(argument => argument.eval())
+        };
+    },
+
+    Template_template(_, _type, id) {
+        return {
+            name: "@template",
+            arguments: [_type.eval(), id.eval(), undefined]
+        };
+    },
+
+    Template_templateWithDefault(_, _type, _2, id, _4, _default, _6) {
+        return {
+            name: "@template",
+            arguments: [_type.eval(), id.eval(), _default.sourceString]
         };
     },
 
