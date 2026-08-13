@@ -83,6 +83,10 @@ export const semanticsJSDOC = JSDOC.createSemantics().addOperation("eval", {
         return this.sourceString;
     },
 
+    IdWithAngleBrackets(_, _1) {
+        return this.sourceString;
+    },
+
     description(_) {
         return this.sourceString;
     },

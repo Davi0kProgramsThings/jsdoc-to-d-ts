@@ -18,7 +18,7 @@ JSDOC {
                        | "@enum" TypeInBraces
 
     TagWithTwoArguments = "@param" TypeInBraces (id | optionalId)
-                        | "@typedef" TypeInBraces id
+                        | "@typedef" TypeInBraces IdWithAngleBrackets
     
     TagWithThreeArguments = "@property" TypeInBraces (id | optionalId) description
 
@@ -27,7 +27,11 @@ JSDOC {
 
     TypeInBrackets = "[" (TypeInBrackets | ~"]" any)* "]"
 
+    TypeInAngleBrackets = "<" (TypeInAngleBrackets | ~">" any)+ ">"
+
     TypeInBraces = "{" (TypeInBraces | ~"}" any)* "}"
+
+    IdWithAngleBrackets = id TypeInAngleBrackets?
 
     id = (letter | "_" | "$") (letter | digit | "_" | "$")*
 
