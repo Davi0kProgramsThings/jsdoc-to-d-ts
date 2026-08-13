@@ -99,6 +99,14 @@ export const semanticsES2022 = ES2022.extendSemantics(semanticsJSDOC).extendOper
                 case "Component":
                     const component = child.eval();
 
+                    if (component.type == "constant" || component.type == "class") {
+                        if (component.doc?.getTag("@typedef")) {
+                            file.components.push(component.doc);
+
+                            component.doc = undefined;
+                        }
+                    }
+
                     if (component.type == "function") {
                         const _function = <FunctionDescriptor> component;
 
@@ -126,8 +134,6 @@ export const semanticsES2022 = ES2022.extendSemantics(semanticsJSDOC).extendOper
                     break;
             }
         }
-
-        console.log(file);
 
         return file;
     },
