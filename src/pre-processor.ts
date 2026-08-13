@@ -146,23 +146,27 @@ function preProcessConstant(constantDescriptor: ConstantDescriptor): Constant {
 }
 
 function preProcessFunction(docCommentDescriptor: DocCommentDescriptor | undefined, functionDescriptor: FunctionDescriptor): Function {
-    const _arguments = functionDescriptor.arguments.map((argument, index) => {
-        const param = docCommentDescriptor?.getTags("@param")[index]
+    const _arguments = docCommentDescriptor?.getTags("@param")
+        .map(({ arguments: [_type, id] }, index) => {
+            const argument = functionDescriptor.arguments[index];
 
-        const isOptional = param?.arguments[1].startsWith("[") && param?.arguments[1].endsWith("]");
+            if (argument) {
+                return {
+                    id: argument,
+                    type: _type ?? "any",
+                    optional: id.startsWith("[") && id.endsWith("]")
+                };
+            }
 
-        return {
-            id: argument,
-            type: param?.arguments[0] ?? "any",
-            optional: !!isOptional
-        };
-    });
+            return undefined;
+        })
+        .filter(argument => !!argument);
 
     const _returns = docCommentDescriptor?.getTag("@returns")?.arguments[0] ?? "any"
 
     return {
         id: functionDescriptor.id,
-        arguments: _arguments,
+        arguments: _arguments ?? [],
         returns: _returns,
         documentation: docCommentDescriptor?.raw,
         genericTypes: docCommentDescriptor?.getTags("@template").map(({ arguments: [_type, id, _default] }) => ({
@@ -241,17 +245,21 @@ function preProcessClassMember(memberDescriptor: MemberDescriptor): Member {
 }
 
 function preProcessClassMethod(docCommentDescriptor: DocCommentDescriptor | undefined, methodDescriptor: Omit<MethodDescriptor, "docs" | "memberDefinitions">): Method {
-    const _arguments = methodDescriptor.arguments.map((argument, index) => {
-        const param = docCommentDescriptor?.getTags("@param")[index]
+    const _arguments = docCommentDescriptor?.getTags("@param")
+        .map(({ arguments: [_type, id] }, index) => {
+            const argument = methodDescriptor.arguments[index];
 
-        const isOptional = param?.arguments[1].startsWith("[") && param?.arguments[1].endsWith("]");
+            if (argument) {
+                return {
+                    id: argument,
+                    type: _type ?? "any",
+                    optional: id.startsWith("[") && id.endsWith("]")
+                };
+            }
 
-        return {
-            id: argument,
-            type: param?.arguments[0] ?? "any",
-            optional: !!isOptional
-        };
-    });
+            return undefined;
+        })
+        .filter(argument => !!argument);
 
     const _returns =  methodDescriptor.id == "constructor" || methodDescriptor.property == "set"
         ? undefined
@@ -264,7 +272,7 @@ function preProcessClassMethod(docCommentDescriptor: DocCommentDescriptor | unde
         static: methodDescriptor.static,
         visibility: getVisibilityModifier(docCommentDescriptor),
         abstract: !!docCommentDescriptor?.getTag("@abstract"),
-        arguments: _arguments,
+        arguments: _arguments ?? [],
         returns: _returns,
         property: methodDescriptor.property,
         documentation: docCommentDescriptor?.raw,
