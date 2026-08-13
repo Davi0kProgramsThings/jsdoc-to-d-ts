@@ -34,11 +34,17 @@ function getVisibilityModifier(docCommentDescriptor?: DocCommentDescriptor): "pu
     return "public";
 }
 
-function includesReferenceToName(file: Pick<File, "constants" | "functions" | "classes" | "types">, name?: string): boolean {
+function includesReferenceToName(file: Omit<File, "importStatements">, name?: string): boolean {
     const pattern = /[A-Za-z_$][A-Za-z0-9_$]*/g;
 
     if (!name) {
         return false;
+    }
+
+    for (const exportStatement of file.exportStatements) {
+        if (exportStatement.match(pattern)?.includes(name)) {
+            return true;
+        }
     }
 
     for (const constant of file.constants) {
@@ -296,7 +302,8 @@ function preProcessType(docCommentDescriptor: DocCommentDescriptor): Type {
 }
 
 export function preProcess(fileDescriptor: FileDescriptor): File {
-    const file: Pick<File, "enums" | "constants" | "functions" | "classes" | "types"> = {
+    const file: Omit<File, "importStatements"> = {
+        exportStatements: fileDescriptor.exportStatements,
         enums: [],
         constants: [],
         functions: [],
@@ -365,7 +372,6 @@ export function preProcess(fileDescriptor: FileDescriptor): File {
                 import: importStatementDescriptor.import.filter(name => includesReferenceToName(file, name)),
                 from: importStatementDescriptor.from
             }))
-            .filter(importStatement => importStatement.default || importStatement.import.length > 0),
-        exportStatements: fileDescriptor.exportStatements
+            .filter(importStatement => importStatement.default || importStatement.import.length > 0)
     }
 }
