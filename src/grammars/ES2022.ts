@@ -132,7 +132,15 @@ export const semanticsES2022 = ES2022.extendSemantics(semanticsJSDOC).extendOper
         };
     },
 
-    ExportStatement(_, _1, _2, _3, _4, _5) {
+    ExportStatement_export(_, _1, _2, _3) {
+        return this.sourceString;
+    },
+
+    ExportStatement_exportFrom(_, _1, _2, _3, _4, _5) {
+        return this.sourceString;
+    },
+
+    ExportStatement_exportFromWithWildcard(_, _1, _2, _3, _4, _5) {
         return this.sourceString;
     },
 

@@ -5,8 +5,9 @@ ES2022 <: JSDOC {
                     | "import" id ("," "{" ListOf<IdWithAlias, ","> "}")? "from" String -- importWithDefault
                     | "import" "*" "as" id "from" String                                -- importWithWildcard
 
-    ExportStatement = "export" "{" ListOf<IdWithAlias, ","> "}" "from" String 
-                    | "export" "*" ("as" id)? "from" String
+    ExportStatement = "export" "{" ListOf<IdWithAlias, ","> "}" "from" String -- exportFrom
+                    | "export" "*" ("as" id)? "from" String                   -- exportFromWithWildcard
+                    | "export" "{" ListOf<IdWithAlias, ","> "}"               -- export
 
     Component = Class | Function | Constant | DocComment
     
