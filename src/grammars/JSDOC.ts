@@ -6,6 +6,8 @@ export type DocCommentDescriptor = {
     type: "doc-comment";
     raw: string;
     tags: TagDescriptor[];
+    getTag: (name: string) => TagDescriptor | undefined;
+    getTags: (name: string) => TagDescriptor[];
 };
 
 export type TagDescriptor = {
@@ -18,11 +20,19 @@ const file = fs.readFileSync("grammars/JSDOC.ohm", "utf-8");
 export const JSDOC = ohm.grammar(file);
 
 export const semanticsJSDOC = JSDOC.createSemantics().addOperation("eval", {
-    DocComment(_, body, _2) {
+    DocComment(_, body, _2): DocCommentDescriptor {
         return {
             type: "doc-comment",
             raw: this.sourceString,
-            tags: body.eval()
+            tags: body.eval(),
+
+            getTag(name) {
+                return this.tags.find(tag => tag.name == name);
+            },
+
+            getTags(name) {
+                return this.tags.filter(tag => tag.name == name);
+            }
         };
     },
 
@@ -44,6 +54,10 @@ export const semanticsJSDOC = JSDOC.createSemantics().addOperation("eval", {
     },
 
     id(_, _1) {
+        return this.sourceString;
+    },
+
+    optionalId(_, _1, _2) {
         return this.sourceString;
     },
 

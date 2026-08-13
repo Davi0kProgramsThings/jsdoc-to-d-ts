@@ -12,16 +12,19 @@ JSDOC {
                          | "@private"
 
     TagWithOneArgument = "@implements" TypeInBraces
+                       | "@type" TypeInBraces
                        | "@returns" TypeInBraces
 
-    TagWithTwoArguments = "@param" TypeInBraces id
+    TagWithTwoArguments = "@param" TypeInBraces (id | optionalId)
                         | "@typedef" TypeInBraces id
     
-    TagWithThreeArguments = "@property" TypeInBraces id description
+    TagWithThreeArguments = "@property" TypeInBraces (id | optionalId) description
 
     TypeInBraces = "{" (~"}" any)* "}"
 
     id = (letter | "_" | "$") (letter | digit | "_" | "$")*
+
+    optionalId = "[" id "]"
 
     description = (~"@" ~"*/" any)*
 }

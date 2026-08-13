@@ -1,7 +1,7 @@
 // This file has been automatically generated with jsdoc-to-d-ts
 {{#each constants}}
 {{#if documentation}}
-{{documentation}}
+{{indent documentation 0}}
 {{/if}}
 {{#unless export.default}}
 export {{keyword}} {{id}}: {{type}};
@@ -12,37 +12,34 @@ export default {{id}};
 {{/each}}
 {{#each classes}}
 {{#if documentation}}
-{{documentation}}
+{{indent documentation 0}}
 {{/if}}
 export {{#if export.default}}default {{/if}}{{keyword}} {{id}} {{#if extends.length}}extends {{join extends ", "}} {{/if}}{{#if implements.length}}implements {{join implements ", "}} {{/if}}{
     {{#each members}}
     {{#if documentation}}
-    {{documentation}}
+{{indent documentation 1}}
     {{/if}}
-    {{#if (eq visibility "protected")}}protected {{/if}}{{id}}: {{type}};
+    {{#if (eq visibility "protected")}}protected {{/if}}{{#if static}}static {{/if}}{{id}}: {{type}};
     {{/each}}
     {{#each methods}}
     {{#if documentation}}
-    {{documentation}}
+{{indent documentation 1}}
     {{/if}}
-    {{#if (eq visibility "protected")}}protected {{/if}}{{#if abstract}}abstract {{/if}}{{id}}({{#each arguments}}{{id}}{{#if optional}}?{{/if}}: {{type}}{{#unless @last}}, {{/unless}}{{/each}}): {{returns}};
+    {{#if (eq visibility "protected")}}protected {{/if}}{{#if static}}static {{/if}}{{#if abstract}}abstract {{/if}}{{#if property}}{{property}} {{/if}}{{id}}({{#each arguments}}{{id}}{{#if optional}}?{{/if}}: {{type}}{{#unless @last}}, {{/unless}}{{/each}}){{#if returns}}: {{returns}}{{/if}};
     {{/each}}
 }
 {{/each}}
 {{#each types}}
-{{#if description}}
-/**
- * {{description}}
- */
-{{/if}}
+{{indent documentation 0}}
 export type {{id}} = {{#unless properties.length}}{{type}}{{else}}{
     {{#each properties}}
-    {{#if description}}
-    /**
-     * {{description}}
-     */
-    {{/if}}
     {{id}}{{#if optional}}?{{/if}}: {{type}};
     {{/each}}
 }{{/unless}};
+{{/each}}
+{{#each exportStatements}}
+{{this}};
+{{/each}}
+{{#each importStatements}}
+import {{#if wildcard}}* as {{/if}}{{#if default}}{{default}}{{#if import.length}},{{/if}} {{/if}}{{#if import.length}}{ {{join import ", "}} } {{/if}}from {{from}};
 {{/each}}

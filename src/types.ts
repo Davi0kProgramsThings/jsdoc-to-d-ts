@@ -1,8 +1,17 @@
 export type File = {
+    importStatements: ImportStatement[];
+    exportStatements: string[];
     constants: Constant[];
     types: Type[];
     classes: Class[];
-}
+};
+
+export type ImportStatement = {
+    wildcard?: boolean;
+    default?: string;
+    import: string[];
+    from: string;
+};
 
 export type Constant = {
     id: string;
@@ -17,12 +26,11 @@ export type Constant = {
 export type Type = {
     id: string;
     type: string;
-    description?: string;
+    documentation: string;
     properties: {
         id: string;
         type: string;
         optional: boolean;
-        description?: string;
     }[];
 };
 
@@ -42,16 +50,19 @@ export type Class = {
 export type Member = {
     id: string;
     type: string;
+    static: boolean;
     visibility: "public" | "protected" | "private";
     documentation?: string;
 };
 
 export type Method = {
     id: string;
+    static: boolean;
     visibility: "public" | "protected" | "private";
     abstract: boolean;
     arguments: Argument[];
-    returns: string;
+    returns?: string;
+    property?: "get" | "set",
     documentation?: string;
 };
 

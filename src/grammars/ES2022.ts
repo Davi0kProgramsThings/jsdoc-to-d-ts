@@ -6,7 +6,19 @@ import { JSDOC, semanticsJSDOC } from "./JSDOC.js";
 
 import type { DocCommentDescriptor } from "./JSDOC.js";
 
-export type FileDescriptor = (ConstantDescriptor | ClassDescriptor | DocCommentDescriptor)[];
+export type FileDescriptor = {
+    importStatements: ImportStatementDescriptor[];
+    exportStatements: string[];
+    components: (ConstantDescriptor | ClassDescriptor | DocCommentDescriptor)[];
+};
+
+export type ImportStatementDescriptor = {
+    type: "import";
+    wildcard?: boolean;
+    default?: string;
+    import: string[];
+    from: string;
+};
 
 export type ConstantDescriptor = {
     type: "constant";
@@ -21,23 +33,27 @@ export type ClassDescriptor = {
     doc?: DocCommentDescriptor;
     export?: ExportDescriptor;
     id: string;
-    extends: string[];
+    extends?: string;
     members: MemberDescriptor[];
-    methods: Omit<MethodDescriptor, "members">[];
+    methods: Omit<MethodDescriptor, "memberDefinitions">[];
 };
 
 export type MemberDescriptor = {
     doc?: DocCommentDescriptor;
+    static: boolean;
     private: boolean;
     id: string;
 };
 
 export type MethodDescriptor = {
+    property?: "get" | "set";
     doc?: DocCommentDescriptor;
+    static: boolean;
     async: boolean;
+    private: boolean;
     id: string;
     arguments: string[];
-    members: MemberDescriptor[];
+    memberDefinitions: MemberDescriptor[];
 };
 
 export type ExportDescriptor = {
@@ -49,10 +65,61 @@ const file = fs.readFileSync("grammars/ES2022.ohm", "utf-8");
 export const ES2022 = ohm.grammar(file, { JSDOC });
 
 export const semanticsES2022 = ES2022.extendSemantics(semanticsJSDOC).extendOperation<any>("eval", {
-    File(file) {
-        return file.children
-            .filter(child => child.ctorName == "Component")
-            .map(child => child.eval());
+    File({ children }) {
+        const file: FileDescriptor = {
+            importStatements: [],
+            exportStatements: [],
+            components: []
+        };
+
+        for (const child of children) {
+            switch (child.ctorName) {
+                case "ImportStatement":
+                    file.importStatements.push(child.eval());
+                    break;
+
+                case "ExportStatement":
+                    file.exportStatements.push(child.eval());
+                    break;
+
+                case "Component":
+                    file.components.push(child.eval());
+                    break;
+            }
+        }
+
+        return file;
+    },
+
+    ImportStatement_import(_, _1, _import, _3, _4, from) {
+        return {
+            type: "import",
+            import: _import.eval(),
+            from: from.eval()
+        };
+    },
+
+    ImportStatement_importWithDefault(_, id, _2, _3, _import, _5, _6, from) {
+        return {
+            type: "import",
+            default: id.eval(),
+            import: _import.eval() ?? [],
+            from: from.eval()
+        };
+    },
+
+    ImportStatement_importWithWildcard(_, _1, _2, id, _4, from) {
+        return {
+            type: "import",
+            wildcard: true,
+            default: id.eval(),
+            import: [],
+            from: from.eval()
+        };
+    },
+
+    ExportStatement(_, _1, _2, _3, _4, _5) {
+        return this.sourceString;
     },
 
     Constant_export(doc, _export, keyword, id) {
@@ -65,7 +132,7 @@ export const semanticsES2022 = ES2022.extendSemantics(semanticsJSDOC).extendOper
         };
     },
 
-    Constant_export_default(doc, _1, _2, id) {
+    Constant_exportDefault(doc, _1, _2, id) {
         return {
             type: "constant",
             doc: doc.eval(),
@@ -101,13 +168,15 @@ export const semanticsES2022 = ES2022.extendSemantics(semanticsJSDOC).extendOper
                     break;
 
                 case "Method":
+                case "Get":
+                case "Set":
                     methods.push(child.eval());
                     break;
             }
         }
 
         for (const method of methods) {
-            for (const member of members) {
+            for (const member of method.memberDefinitions) {
                 const index = members.findIndex(({ id }) => id == member.id);
 
                 if (!members[index] || (!members[index].doc && member.doc)) {
@@ -117,27 +186,54 @@ export const semanticsES2022 = ES2022.extendSemantics(semanticsJSDOC).extendOper
                 }
             }
 
-            delete method.members;
+            delete method.memberDefinitions;
         }
 
         return { members, methods };
     },
 
-    Member(doc, hashtag, id, _3) {
+    Member(doc, _static, hashtag, id) {
         return {
             doc: doc.eval(),
+            static: _static.numChildren > 0,
             private: hashtag.numChildren > 0,
             id: id.eval()
         };
     },
 
-    Method(doc, _async, id, _3, _arguments, _5, block) {
+    Method(doc, _static, _async, hashtag, id, _5, _arguments, _7, block) {
         return {
             doc: doc.eval(),
+            static: _static.numChildren > 0,
             async: _async.numChildren > 0,
+            private: hashtag.numChildren > 0,
             id: id.eval(),
             arguments: _arguments.eval(),
-            members: block.eval()
+            memberDefinitions: block.eval()
+        };
+    },
+
+    Get(doc, _1, hashtag, id, _4, _5, block) {
+        return {
+            property: "get",
+            doc: doc.eval(),
+            async: false,
+            private: hashtag.numChildren > 0,
+            id: id.eval(),
+            arguments: [],
+            memberDefinitions: block.eval()
+        };
+    },
+
+    Set(doc, _1, hashtag, id, _4, argument, _6, block) {
+        return {
+            property: "set",
+            doc: doc.eval(),
+            async: false,
+            private: hashtag.numChildren > 0,
+            id: id.eval(),
+            arguments: [argument.eval()],
+            memberDefinitions: block.eval()
         };
     },
 
@@ -159,7 +255,7 @@ export const semanticsES2022 = ES2022.extendSemantics(semanticsJSDOC).extendOper
         return members;
     },
 
-    MemberDefinition(doc, _1, _2, hashtag, id, _5) {
+    MemberDefinition(doc, _1, _2, hashtag, id, _5, _6) {
         return {
             doc: doc.eval(),
             private: hashtag.numChildren > 0,
@@ -171,5 +267,21 @@ export const semanticsES2022 = ES2022.extendSemantics(semanticsJSDOC).extendOper
         return {
             default: _default.numChildren > 0
         };
+    },
+
+    IdWithAlias(id, _1, alias) {
+        if (alias.numChildren > 0) {
+            return alias.eval();
+        }
+
+        return id.eval();
+    },
+
+    Argument(argument, _1, _2) {
+        return argument.sourceString;
+    },
+
+    String(_, _1, _2) {
+        return this.sourceString;
     }
 });

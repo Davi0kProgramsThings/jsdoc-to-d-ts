@@ -1,14 +1,43 @@
 ES2022 <: JSDOC {
-    File = (Component | ~Component any)*
+    File = (ImportStatement | ExportStatement | Component | any)*
+
+    ImportStatement = "import" "{" ListOf<IdWithAlias, ","> "}" "from" String           -- import
+                    | "import" id ("," "{" ListOf<IdWithAlias, ","> "}")? "from" String -- importWithDefault
+                    | "import" "*" "as" id "from" String                                -- importWithWildcard
+
+    ExportStatement = "export" "{" ListOf<IdWithAlias, ","> "}" "from" String 
+                    | "export" "*" ("as" id)? "from" String     
+
     Component = Constant | Class | DocComment
+    
     Constant = DocComment? "export"? Keyword id  -- export
-             | DocComment? "export" "default" id -- export_default
+             | DocComment? "export" "default" id -- exportDefault
     Keyword = "var" | "let" | "const"
-    Class = DocComment? Export? "class" id ("extends" ListOf<id, ",">)? ClassBody
-    ClassBody = "{" (Method | Member)* "}"
-    Member = DocComment? "#"? id ";"?
-    Method = DocComment? "async"? id "(" ListOf<id, ","> ")" Block
+
+    Class = DocComment? Export? "class" id ("extends" id)? ClassBody
+    ClassBody = "{" (Method | Get | Set | Member | ~"}" any)* "}"
+    Member = DocComment? "static"? "#"? id
+    Method = DocComment? "static"? "async"? "#"? id "(" ListOf<Argument, ","> ")" Block
+    Get = DocComment? "get" "#"? id "(" ")" Block
+    Set = DocComment? "set" "#"? id "(" id ")" Block
     Block = "{" (MemberDefinition | Block | ~"}" any)* "}"
-    MemberDefinition = DocComment? "this" "." "#"? id "=" 
+    MemberDefinition = DocComment? "this" "." "#"? id "=" Expr<(MemberDefinition | Block | "}")>
     Export = "export" "default"?
+
+    IdWithAlias = id ("as" id)?
+
+    Argument = (id | ExprInBrackets) ("=" Expr<("," | ")")>)?
+
+    Expr<stop> = (ExprInParenthesis | ExprInBrackets | String | (~stop any))+
+
+    ExprInParenthesis = "(" (ExprInParenthesis | ExprInBrackets | String | (~")" any))+ ")"
+    
+    ExprInBrackets = "[" (ExprInParenthesis | ExprInBrackets | String | (~"]" any))+ "]"
+                   | "{" (ExprInParenthesis | ExprInBrackets | String | (~"}" any))+ "}"
+
+    String = "\"" (~"\"" any)* "\""
+           | "\'" (~"\'" any)* "\'"
+           | "`" (StringInterpolation | (~"`" any))* "`"
+
+    StringInterpolation = "${" | Expr<"}"> | "}"
 }
