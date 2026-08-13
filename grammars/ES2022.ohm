@@ -20,7 +20,7 @@ ES2022 <: JSDOC {
 
     Class = DocComment? Export? "class" id ("extends" id)? ClassBody
     ClassBody = "{" (Method | Get | Set | Member | ~"}" any)* "}"
-    Member = DocComment? "static"? "#"? id
+    Member = DocComment? "static"? "#"? id ("=" Expr<(Member | Method | Get | Set | "}")>)?
     Method = DocComment* "static"? "async"? "#"? id "(" ListOf<Argument, ","> ")" MethodBlock
     Get = DocComment? "get" "#"? id "(" ")" MethodBlock
     Set = DocComment? "set" "#"? id "(" id ")" MethodBlock
@@ -32,12 +32,12 @@ ES2022 <: JSDOC {
 
     Argument = (id | ExprInBrackets) ("=" Expr<("," | ")")>)?
 
-    Expr<stop> = (~stop (ExprInParenthesis | ExprInBrackets | String | any))+
+    Expr<stop> = (~stop (ExprInParenthesis | ExprInBrackets | String | bigInteger | any))+
 
-    ExprInParenthesis = "(" (ExprInParenthesis | ExprInBrackets | String | (~")" any))+ ")"
+    ExprInParenthesis = "(" (ExprInParenthesis | ExprInBrackets | String | bigInteger | (~")" any))+ ")"
     
-    ExprInBrackets = "[" (ExprInParenthesis | ExprInBrackets | Comment | String | (~"]" any))+ "]"
-                   | "{" (ExprInParenthesis | ExprInBrackets | Comment | String | (~"}" any))+ "}"
+    ExprInBrackets = "[" (ExprInParenthesis | ExprInBrackets | Comment | String | bigInteger | (~"]" any))+ "]"
+                   | "{" (ExprInParenthesis | ExprInBrackets | Comment | String | bigInteger | (~"}" any))+ "}"
 
     String = "\"" (~"\"" any)* "\""
            | "\'" (~"\'" any)* "\'"
@@ -47,4 +47,6 @@ ES2022 <: JSDOC {
 
     Comment = "//" (~"\n" any)       -- lineComment
             | "/*" (~"*/" any)* "*/" -- multiLineComment
+
+    bigInteger = digit "n"
 }

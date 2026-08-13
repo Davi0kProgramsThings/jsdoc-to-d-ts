@@ -260,7 +260,7 @@ export const semanticsES2022 = ES2022.extendSemantics(semanticsJSDOC).extendOper
         return { members, methods };
     },
 
-    Member(doc, _static, hashtag, id) {
+    Member(doc, _static, hashtag, id, _4, _5) {
         return {
             doc: doc.eval(),
             static: _static.numChildren > 0,
