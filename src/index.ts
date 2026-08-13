@@ -2,11 +2,9 @@ import fs from "fs";
 
 import Handlebars from "handlebars";
 
-import { ES2022, semanticsES2022 } from "./grammars/ES2022.js";
+import { ES2022, semanticsES2022 } from "./grammars/ES2022.ts";
 
-import { preProcess } from "./pre-processor.js";
-
-import type { File } from "./types.js";
+import { preProcess } from "./pre-processor.ts";
 
 Handlebars.registerHelper("eq", function(a: unknown, b: unknown): boolean {
     return a == b;
@@ -35,31 +33,19 @@ Handlebars.registerHelper("indent", function(text: string, tabs: number): string
 
 const TEMPLATE = fs.readFileSync("templates/index.hbs", "utf-8");
 
-function isEmpty({ exportStatements, constants, classes, types }: File): boolean {
-    const components = exportStatements.length + constants.length + classes.length + types.length;
-
-    return components == 0;
-}
-
-function main(input: string) {
-    const content = fs.readFileSync(input, "utf-8");
-    const match = ES2022.match(content, "File");
+/**
+ * Transpiles javascript code with jsdoc to typescript's type definitions.
+ *
+ * @param input - The javascript code to transpile.
+ * @returns The corresponding .d.ts type definitions.
+ */
+export function transpile(input: string): string {
+    const match = ES2022.match(input, "File");
     const fileDescriptor = semanticsES2022(match);
-
     const file = preProcess(fileDescriptor.eval());
 
-    if (!isEmpty(file)) {
-        const template = Handlebars.compile(TEMPLATE, { noEscape: true });
-        const output = template(file);
+    const template = Handlebars.compile(TEMPLATE, { noEscape: true });
+    const output = template(file);
 
-        fs.writeFileSync(input.slice(0, input.length - 3) + ".d.ts", output);
-    }
+    return output;
 }
-
-class T<A extends string = "lol"> {
-
-}
-
-const input = process.argv[2];
-
-main(input);

@@ -2,9 +2,9 @@ import fs from "fs";
 
 import * as ohm from "ohm-js";
 
-import { JSDOC, semanticsJSDOC } from "./JSDOC.js";
+import { JSDOC, semanticsJSDOC } from "./JSDOC.ts";
 
-import type { DocCommentDescriptor } from "./JSDOC.js";
+import type { DocCommentDescriptor } from "./JSDOC.ts";
 
 export type FileDescriptor = {
     importStatements: ImportStatementDescriptor[];

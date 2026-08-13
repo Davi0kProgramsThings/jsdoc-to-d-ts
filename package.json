@@ -3,12 +3,18 @@
     "version": "1.0.0-alpha.1",
     "main": "build/index.js",
     "type": "module",
+    "bin": {
+        "jsdoc-to-d-ts": "build/bin/jsdoc-to-d-ts.js"
+    },
     "scripts": {
         "build": "tsc"
     },
     "dependencies": {
+        "commander": "15.0.0",
+        "fast-glob": "3.3.3",
         "handlebars": "4.7.9",
-        "ohm-js": "17.5.0"
+        "ohm-js": "17.5.0",
+        "pkg-types": "2.3.1"
     },
     "devDependencies": {
         "@types/node": "26.2.0",

@@ -1,8 +1,8 @@
-import type { Class, Constant, File, Member, Method, Type } from "./types.js";
+import type { Class, Constant, File, Member, Method, Type } from "./types.ts";
 
-import type { DocCommentDescriptor } from "./grammars/JSDOC.js";
+import type { DocCommentDescriptor } from "./grammars/JSDOC.ts";
 
-import type { ClassDescriptor, ConstantDescriptor, FileDescriptor, MemberDescriptor, MethodDescriptor } from "./grammars/ES2022.js";
+import type { ClassDescriptor, ConstantDescriptor, FileDescriptor, MemberDescriptor, MethodDescriptor } from "./grammars/ES2022.ts";
 
 function trimChars(str: string, characters: string): string {
     const escaped = characters.replace(/[.*+?^${}()|[\]\\-]/g, "\\$&");
