@@ -52,11 +52,12 @@ async function transpileProject(_path?: string): Promise<void> {
         const output = transpile(content);
 
         if (output.split("\n").length > 2) {
-            console.log(config.compilerOptions.outDir)
             if (config.compilerOptions.outDir) {
                 const root = process.cwd();
                 const sourceRoot = path.resolve(root, config.compilerOptions?.rootDir ?? ".");
                 const target = path.join(root, config.compilerOptions.outDir, path.relative(sourceRoot, filename));
+
+                fs.mkdirSync(path.dirname(target), { recursive: true });
 
                 fs.writeFileSync(target, output);
             } else {

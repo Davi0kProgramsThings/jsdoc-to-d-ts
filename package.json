@@ -8,6 +8,7 @@
         "jsdoc-to-d-ts": "build/bin/jsdoc-to-d-ts.js"
     },
     "scripts": {
+        "prepare": "npm run build",
         "build": "tsc"
     },
     "dependencies": {
