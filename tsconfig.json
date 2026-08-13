@@ -9,7 +9,6 @@
         "declaration": true,
         "rootDir": "src",
         "outDir": "build",
-        "sourceMap": true,
         "allowImportingTsExtensions": true,
         "rewriteRelativeImportExtensions": true,
         "skipLibCheck": true,

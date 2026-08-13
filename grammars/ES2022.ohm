@@ -8,7 +8,7 @@ ES2022 <: JSDOC {
     ExportStatement = "export" "{" ListOf<IdWithAlias, ","> "}" "from" String 
                     | "export" "*" ("as" id)? "from" String     
 
-    Component = Constant | Class | DocComment
+    Component = Class | Constant | DocComment
     
     Constant = DocComment? "export"? Keyword id  -- export
              | DocComment? "export" "default" id -- exportDefault
