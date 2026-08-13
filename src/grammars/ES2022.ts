@@ -97,10 +97,37 @@ export const semanticsES2022 = ES2022.extendSemantics(semanticsJSDOC).extendOper
                     break;
 
                 case "Component":
-                    file.components.push(child.eval());
+                    const component = child.eval();
+
+                    if (component.type == "function") {
+                        const _function = <FunctionDescriptor> component;
+
+                        const docCommentDescriptors = _function.docs
+                            .slice(0, _function.docs.length - 1)
+                            .filter(docCommentDescriptor => !docCommentDescriptor.getTag("@overload"));
+
+                        const docs = _function.docs
+                            .slice(0, _function.docs.length - 1)
+                            .filter(docCommentDescriptor => docCommentDescriptor.getTag("@overload"));
+
+                        if (_function.docs.length > 0) {
+                            _function.docs[_function.docs.length - 1].getTag("@typedef")
+                                ? docCommentDescriptors.push(_function.docs[_function.docs.length - 1])
+                                : docs.push(_function.docs[_function.docs.length - 1]);
+                        }
+
+                        file.components.push(...docCommentDescriptors);
+
+                        _function.docs = docs;
+                    }
+
+                    file.components.push(component);
+
                     break;
             }
         }
+
+        console.log(file);
 
         return file;
     },

@@ -9,7 +9,7 @@ export type DocCommentDescriptor = {
     raw: string;
     tags: TagDescriptor[];
     getTag: (name: string) => TagDescriptor | undefined;
-    getTags: (name: string) => TagDescriptor[];
+    getTags: (name: string | string[]) => TagDescriptor[];
 };
 
 export type TagDescriptor = {
@@ -35,7 +35,7 @@ export const semanticsJSDOC = JSDOC.createSemantics().addOperation("eval", {
             },
 
             getTags(name) {
-                return this.tags.filter(tag => tag.name == name);
+                return this.tags.filter(tag => typeof name == "string" ? tag.name == name : name.includes(tag.name));
             }
         };
     },

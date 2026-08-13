@@ -202,17 +202,13 @@ function preProcessClass(classDescriptor: ClassDescriptor): Class {
             continue;
         }
 
-        for (const [index, docCommentDescriptor] of methodDecriptor.docs.entries()) {
-            if (docCommentDescriptor.getTag("@private") || index == methodDecriptor.docs.length - 1) {
+        for (const docCommentDescriptor of methodDecriptor.docs) {
+            if (docCommentDescriptor.getTag("@private")) {
                 continue;
             }
 
-            if (docCommentDescriptor.getTag("@overload")) {
-                methods.push(preProcessClassMethod(docCommentDescriptor, methodDecriptor));
-            }
+            methods.push(preProcessClassMethod(docCommentDescriptor, methodDecriptor));
         }
-
-        methods.push(preProcessClassMethod(methodDecriptor.docs[methodDecriptor.docs.length - 1], methodDecriptor));
     }
 
     return {
@@ -286,7 +282,7 @@ function preProcessType(docCommentDescriptor: DocCommentDescriptor): Type {
     return {
         id: typedef!.arguments[1],
         type: typedef!.arguments[0],
-        properties: docCommentDescriptor.getTags("@property").map(({ arguments: [_type, id, description] }) => {
+        properties: docCommentDescriptor.getTags(["@prop", "@property"]).map(({ arguments: [_type, id, description] }) => {
             const isOptional = id.startsWith("[") && id.endsWith("]");
 
             const content = trimChars(description, " -*\n");
@@ -329,17 +325,13 @@ export function preProcess(fileDescriptor: FileDescriptor): File {
                     continue;
                 }
 
-                for (const [index, docCommentDescriptor] of component.docs.entries()) {
-                    if (docCommentDescriptor.getTag("@internal") || index == component.docs.length - 1) {
+                for (const docCommentDescriptor of component.docs) {
+                    if (docCommentDescriptor.getTag("@internal")) {
                         continue;
                     }
 
-                    if (docCommentDescriptor.getTag("@overload")) {
-                        file.functions.push(preProcessFunction(docCommentDescriptor, component));
-                    }
+                    file.functions.push(preProcessFunction(docCommentDescriptor, component));
                 }
-
-                file.functions.push(preProcessFunction(component.docs[component.docs.length - 1], component));
 
                 break;
 
