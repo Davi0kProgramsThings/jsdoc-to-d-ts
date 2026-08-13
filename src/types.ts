@@ -26,11 +26,11 @@ export type Constant = {
 export type Type = {
     id: string;
     type: string;
-    documentation: string;
     properties: {
         id: string;
         type: string;
         optional: boolean;
+        description?: string;
     }[];
 };
 

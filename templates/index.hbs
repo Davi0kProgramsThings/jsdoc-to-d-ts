@@ -30,9 +30,11 @@ export {{#if export.default}}default {{/if}}{{keyword}} {{id}}{{#if genericTypes
 }
 {{/each}}
 {{#each types}}
-{{indent documentation 0}}
 export type {{id}} = {{#unless properties.length}}{{type}}{{else}}{
     {{#each properties}}
+    {{#if description}}
+{{indent description 1}}
+    {{/if}}
     {{id}}{{#if optional}}?{{/if}}: {{type}};
     {{/each}}
 }{{/unless}};

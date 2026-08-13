@@ -4,6 +4,12 @@ import type { DocCommentDescriptor } from "./grammars/JSDOC.js";
 
 import type { ClassDescriptor, ConstantDescriptor, FileDescriptor, MemberDescriptor, MethodDescriptor } from "./grammars/ES2022.js";
 
+function trimChars(str: string, characters: string): string {
+    const escaped = characters.replace(/[.*+?^${}()|[\]\\-]/g, "\\$&");
+    const regex = new RegExp(`^[${escaped}]+|[${escaped}]+$`, "g");
+    return str.replace(regex, "");
+}
+
 function getKeyword(classDescriptor: ClassDescriptor): "class" | "abstract class" | "interface" {
     if (classDescriptor.doc?.getTag("@interface")) {
         return "interface";
@@ -202,14 +208,16 @@ function preProcessType(docCommentDescriptor: DocCommentDescriptor): Type {
     return {
         id: typedef!.arguments[1],
         type: typedef!.arguments[0],
-        documentation: docCommentDescriptor.raw,
-        properties: docCommentDescriptor.getTags("@property").map(({ arguments: [_type, id] }) => {
+        properties: docCommentDescriptor.getTags("@property").map(({ arguments: [_type, id, description] }) => {
             const isOptional = id.startsWith("[") && id.endsWith("]");
+
+            const content = trimChars(description, " -*\n");
 
             return {
                 id: !isOptional ? id : id.slice(1, id.length - 1),
                 type: _type,
-                optional: isOptional
+                optional: isOptional,
+                description: content ? "/*\n * " + content + "\n */" : undefined
             }
         })
     };
