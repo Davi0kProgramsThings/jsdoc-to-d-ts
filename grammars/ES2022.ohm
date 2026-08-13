@@ -31,16 +31,19 @@ ES2022 <: JSDOC {
 
     Argument = (id | ExprInBrackets) ("=" Expr<("," | ")")>)?
 
-    Expr<stop> = (ExprInParenthesis | ExprInBrackets | String | (~stop any))+
+    Expr<stop> = (~stop (ExprInParenthesis | ExprInBrackets | String | any))+
 
     ExprInParenthesis = "(" (ExprInParenthesis | ExprInBrackets | String | (~")" any))+ ")"
     
-    ExprInBrackets = "[" (ExprInParenthesis | ExprInBrackets | String | (~"]" any))+ "]"
-                   | "{" (ExprInParenthesis | ExprInBrackets | String | (~"}" any))+ "}"
+    ExprInBrackets = "[" (ExprInParenthesis | ExprInBrackets | Comment | String | (~"]" any))+ "]"
+                   | "{" (ExprInParenthesis | ExprInBrackets | Comment | String | (~"}" any))+ "}"
 
     String = "\"" (~"\"" any)* "\""
            | "\'" (~"\'" any)* "\'"
            | "`" (StringInterpolation | (~"`" any))* "`"
 
     StringInterpolation = "${" | Expr<"}"> | "}"
+
+    Comment = "//" (~"\n" any)       -- lineComment
+            | "/*" (~"*/" any)* "*/" -- multiLineComment
 }
