@@ -16,6 +16,12 @@ declare const {{id}}: {{type}};
 export default {{id}};
 {{/unless}}
 {{/each}}
+{{#each functions}}
+{{#if documentation}}
+{{indent documentation 0}}
+{{/if}}
+export {{#if export.default}}default {{/if}}function {{id}}{{#if genericTypes}}<{{#each genericTypes}}{{id}}{{#if type}} extends {{type}}{{/if}}{{#if default}} = {{default}}{{/if}}{{#unless @last}}, {{/unless}}{{/each}}>{{/if}}({{#each arguments}}{{id}}{{#if optional}}?{{/if}}: {{type}}{{#unless @last}}, {{/unless}}{{/each}}): {{returns}};
+{{/each}}
 {{#each classes}}
 {{#if documentation}}
 {{indent documentation 0}}

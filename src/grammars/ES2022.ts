@@ -11,7 +11,7 @@ import type { DocCommentDescriptor } from "./JSDOC.ts";
 export type FileDescriptor = {
     importStatements: ImportStatementDescriptor[];
     exportStatements: string[];
-    components: (ConstantDescriptor | ClassDescriptor | DocCommentDescriptor)[];
+    components: (ConstantDescriptor | FunctionDescriptor | ClassDescriptor | DocCommentDescriptor)[];
 };
 
 export type ImportStatementDescriptor = {
@@ -29,6 +29,15 @@ export type ConstantDescriptor = {
     keyword?: "var" | "let" | "const";
     id: string;
     expr: string;
+};
+
+export type FunctionDescriptor = {
+    type: "function";
+    docs: DocCommentDescriptor[];
+    export?: ExportDescriptor;
+    async: boolean;
+    id: string;
+    arguments: string[];
 };
 
 export type ClassDescriptor = {
@@ -147,6 +156,17 @@ export const semanticsES2022 = ES2022.extendSemantics(semanticsJSDOC).extendOper
             id: id.eval(),
             expr: expr.sourceString
         };
+    },
+
+    Function(docs, _export, _async, _3, id, _5, _arguments, _7, _8) {
+        return {
+            type: "function",
+            docs: docs.eval(),
+            export: _export.eval(),
+            async: _async.numChildren > 0,
+            id: id.eval(),
+            arguments: _arguments.eval()
+        }
     },
 
     Class(doc, _export, _2, id, _4, _extends, body) {

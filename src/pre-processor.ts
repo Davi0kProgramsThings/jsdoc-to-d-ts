@@ -1,8 +1,8 @@
-import type { Class, Constant, Enum, File, Member, Method, Type } from "./types.ts";
+import type { Class, Constant, Enum, File, Function, Member, Method, Type } from "./types.ts";
 
 import type { DocCommentDescriptor } from "./grammars/JSDOC.ts";
 
-import type { ClassDescriptor, ConstantDescriptor, FileDescriptor, MemberDescriptor, MethodDescriptor } from "./grammars/ES2022.ts";
+import type { ClassDescriptor, ConstantDescriptor, FileDescriptor, FunctionDescriptor, MemberDescriptor, MethodDescriptor } from "./grammars/ES2022.ts";
 
 function trimChars(str: string, characters: string): string {
     const escaped = characters.replace(/[.*+?^${}()|[\]\\-]/g, "\\$&");
@@ -34,7 +34,7 @@ function getVisibilityModifier(docCommentDescriptor?: DocCommentDescriptor): "pu
     return "public";
 }
 
-function includesReferenceToName(file: Pick<File, "constants" | "classes" | "types">, name?: string): boolean {
+function includesReferenceToName(file: Pick<File, "constants" | "functions" | "classes" | "types">, name?: string): boolean {
     const pattern = /[A-Za-z_$][A-Za-z0-9_$]*/g;
 
     if (!name) {
@@ -44,6 +44,24 @@ function includesReferenceToName(file: Pick<File, "constants" | "classes" | "typ
     for (const constant of file.constants) {
         if (constant.type.match(pattern)?.includes(name)) {
             return true;
+        }
+    }
+
+    for (const _function of file.functions) {
+        for (const argument of _function.arguments) {
+            if (argument.type.match(pattern)?.includes(name)) {
+                return true;
+            }
+        }
+
+        if (_function.returns.match(pattern)?.includes(name)) {
+            return true;
+        }
+
+        for (const genericType of _function.genericTypes ?? []) {
+            if (genericType.type?.match(pattern)?.includes(name) || genericType.default?.match(pattern)?.includes(name)) {
+                return true;
+            }
         }
     }
 
@@ -66,6 +84,18 @@ function includesReferenceToName(file: Pick<File, "constants" | "classes" | "typ
             }
 
             if (method.returns?.match(pattern)?.includes(name)) {
+                return true;
+            }
+
+            for (const genericType of method.genericTypes ?? []) {
+                if (genericType.type?.match(pattern)?.includes(name) || genericType.default?.match(pattern)?.includes(name)) {
+                    return true;
+                }
+            }
+        }
+
+        for (const genericType of _class.genericTypes ?? []) {
+            if (genericType.type?.match(pattern)?.includes(name) || genericType.default?.match(pattern)?.includes(name)) {
                 return true;
             }
         }
@@ -105,6 +135,37 @@ function preProcessConstant(constantDescriptor: ConstantDescriptor): Constant {
         documentation: constantDescriptor.doc?.raw,
         export: {
             default: constantDescriptor.export!.default
+        }
+    };
+}
+
+function preProcessFunction(docCommentDescriptor: DocCommentDescriptor | undefined, functionDescriptor: FunctionDescriptor): Function {
+    const _arguments = functionDescriptor.arguments.map((argument, index) => {
+        const param = docCommentDescriptor?.getTags("@param")[index]
+
+        const isOptional = param?.arguments[1].startsWith("[") && param?.arguments[1].endsWith("]");
+
+        return {
+            id: argument,
+            type: param?.arguments[0] ?? "any",
+            optional: !!isOptional
+        };
+    });
+
+    const _returns = docCommentDescriptor?.getTag("@returns")?.arguments[0] ?? "any"
+
+    return {
+        id: functionDescriptor.id,
+        arguments: _arguments,
+        returns: _returns,
+        documentation: docCommentDescriptor?.raw,
+        genericTypes: docCommentDescriptor?.getTags("@template").map(({ arguments: [_type, id, _default] }) => ({
+            id,
+            type: _type,
+            default: _default
+        })),
+        export: {
+            default: functionDescriptor.export!.default
         }
     };
 }
@@ -235,9 +296,10 @@ function preProcessType(docCommentDescriptor: DocCommentDescriptor): Type {
 }
 
 export function preProcess(fileDescriptor: FileDescriptor): File {
-    const file: Pick<File, "enums" | "constants" | "classes" | "types"> = {
+    const file: Pick<File, "enums" | "constants" | "functions" | "classes" | "types"> = {
         enums: [],
         constants: [],
+        functions: [],
         classes: [],
         types: []
     };
@@ -252,6 +314,25 @@ export function preProcess(fileDescriptor: FileDescriptor): File {
                 component.doc?.getTag("@enum")
                     ? file.enums.push(preProcessEnum(component))
                     : file.constants.push(preProcessConstant(component));
+
+                break;
+
+            case "function":
+                if (!component.export) {
+                    continue;
+                }
+
+                for (const [index, docCommentDescriptor] of component.docs.entries()) {
+                    if (docCommentDescriptor.getTag("@internal") || index == component.docs.length - 1) {
+                        continue;
+                    }
+
+                    if (docCommentDescriptor.getTag("@overload")) {
+                        file.functions.push(preProcessFunction(docCommentDescriptor, component));
+                    }
+                }
+
+                file.functions.push(preProcessFunction(component.docs[component.docs.length - 1], component));
 
                 break;
 

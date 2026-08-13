@@ -14,17 +14,17 @@ ES2022 <: JSDOC {
              | DocComment? "export" "default" id "=" Expr<(Component | ";")>  -- exportDefault
     Keyword = "var" | "let" | "const"
 
-    Function = DocComment? Export? "async"? "function" id "(" ListOf<Argument, ","> ")" Block
+    Function = DocComment* Export? "async"? "function" id "(" ListOf<Argument, ","> ")" Block
     Block = "{" (Block | ~"}" any)* "}"
 
     Class = DocComment? Export? "class" id ("extends" id)? ClassBody
     ClassBody = "{" (Method | Get | Set | Member | ~"}" any)* "}"
     Member = DocComment? "static"? "#"? id
     Method = DocComment* "static"? "async"? "#"? id "(" ListOf<Argument, ","> ")" MethodBlock
-    Get = DocComment? "get" "#"? id "(" ")" Block
-    Set = DocComment? "set" "#"? id "(" id ")" Block
+    Get = DocComment? "get" "#"? id "(" ")" MethodBlock
+    Set = DocComment? "set" "#"? id "(" id ")" MethodBlock
     MethodBlock = "{" (MemberDefinition | MethodBlock | ~"}" any)* "}"
-    MemberDefinition = DocComment? "this" "." "#"? id "=" Expr<(MemberDefinition | Block | "}")>
+    MemberDefinition = DocComment? "this" "." "#"? id "=" Expr<(MemberDefinition | MethodBlock | "}")>
     Export = "export" "default"?
 
     IdWithAlias = id ("as" id)?

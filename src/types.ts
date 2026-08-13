@@ -3,6 +3,7 @@ export type File = {
     exportStatements: string[];
     enums: Enum[];
     constants: Constant[];
+    functions: Function[];
     types: Type[];
     classes: Class[];
 };
@@ -28,6 +29,21 @@ export type Constant = {
     type: string;
     keyword?: "var" | "let" | "const";
     documentation?: string;
+    export: {
+        default: boolean;
+    };
+};
+
+export type Function = {
+    id: string;
+    arguments: Argument[];
+    returns: string;
+    documentation?: string;
+    genericTypes?: {
+        id: string;
+        type?: string;
+        default?: string;
+    }[];
     export: {
         default: boolean;
     };
