@@ -28,6 +28,7 @@ export type ConstantDescriptor = {
     export?: ExportDescriptor;
     keyword?: "var" | "let" | "const";
     id: string;
+    expr: string;
 };
 
 export type ClassDescriptor = {
@@ -126,23 +127,25 @@ export const semanticsES2022 = ES2022.extendSemantics(semanticsJSDOC).extendOper
         return this.sourceString;
     },
 
-    Constant_export(doc, _export, keyword, id) {
+    Constant_export(doc, _export, keyword, id, _4, expr) {
         return {
             type: "constant",
             doc: doc.eval(),
             export: _export.numChildren > 0 ? { default: false } : undefined,
             keyword: keyword.sourceString,
-            id: id.eval()
+            id: id.eval(),
+            expr: expr.eval()
         };
     },
 
-    Constant_exportDefault(doc, _1, _2, id) {
+    Constant_exportDefault(doc, _1, _2, id, _4, expr) {
         return {
             type: "constant",
             doc: doc.eval(),
             export: { default: true },
             keyword: "const",
-            id: id.eval()
+            id: id.eval(),
+            expr: expr.sourceString
         };
     },
 
@@ -241,7 +244,7 @@ export const semanticsES2022 = ES2022.extendSemantics(semanticsJSDOC).extendOper
         };
     },
 
-    Block(_, body, _2) {
+    MethodBlock(_, body, _2) {
         const members = [];
 
         for (const child of body.children) {
@@ -250,7 +253,7 @@ export const semanticsES2022 = ES2022.extendSemantics(semanticsJSDOC).extendOper
                     members.push(child.eval());
                     break;
 
-                case "Block":
+                case "MethodBlock":
                     members.push(...child.eval());
                     break;
             }
@@ -286,6 +289,10 @@ export const semanticsES2022 = ES2022.extendSemantics(semanticsJSDOC).extendOper
     },
 
     String(_, _1, _2) {
+        return this.sourceString;
+    },
+
+    Expr(_) {
         return this.sourceString;
     }
 });

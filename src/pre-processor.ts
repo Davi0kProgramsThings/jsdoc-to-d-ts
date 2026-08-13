@@ -1,4 +1,4 @@
-import type { Class, Constant, File, Member, Method, Type } from "./types.ts";
+import type { Class, Constant, Enum, File, Member, Method, Type } from "./types.ts";
 
 import type { DocCommentDescriptor } from "./grammars/JSDOC.ts";
 
@@ -84,6 +84,17 @@ function includesReferenceToName(file: Pick<File, "constants" | "classes" | "typ
     }
 
     return false;
+}
+
+function preProcessEnum(constantDescriptor: ConstantDescriptor): Enum {
+    return {
+        id: constantDescriptor.id,
+        body: constantDescriptor.expr,
+        documentation: constantDescriptor.doc?.raw,
+        export: {
+            default: constantDescriptor.export!.default
+        }
+    };
 }
 
 function preProcessConstant(constantDescriptor: ConstantDescriptor): Constant {
@@ -224,7 +235,8 @@ function preProcessType(docCommentDescriptor: DocCommentDescriptor): Type {
 }
 
 export function preProcess(fileDescriptor: FileDescriptor): File {
-    const file: Pick<File, "constants" | "classes" | "types"> = {
+    const file: Pick<File, "enums" | "constants" | "classes" | "types"> = {
+        enums: [],
         constants: [],
         classes: [],
         types: []
@@ -237,7 +249,9 @@ export function preProcess(fileDescriptor: FileDescriptor): File {
                     continue;
                 }
 
-                file.constants.push(preProcessConstant(component));
+                component.doc?.getTag("@enum")
+                    ? file.enums.push(preProcessEnum(component))
+                    : file.constants.push(preProcessConstant(component));
 
                 break;
 

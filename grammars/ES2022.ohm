@@ -6,21 +6,24 @@ ES2022 <: JSDOC {
                     | "import" "*" "as" id "from" String                                -- importWithWildcard
 
     ExportStatement = "export" "{" ListOf<IdWithAlias, ","> "}" "from" String 
-                    | "export" "*" ("as" id)? "from" String     
+                    | "export" "*" ("as" id)? "from" String
 
-    Component = Class | Constant | DocComment
+    Component = Class | Function | Constant | DocComment
     
-    Constant = DocComment? "export"? Keyword id  -- export
-             | DocComment? "export" "default" id -- exportDefault
+    Constant = DocComment? "export"? Keyword id "=" Expr<(Component | ";")>   -- export
+             | DocComment? "export" "default" id "=" Expr<(Component | ";")>  -- exportDefault
     Keyword = "var" | "let" | "const"
+
+    Function = DocComment? Export? "async"? "function" id "(" ListOf<Argument, ","> ")" Block
+    Block = "{" (Block | ~"}" any)* "}"
 
     Class = DocComment? Export? "class" id ("extends" id)? ClassBody
     ClassBody = "{" (Method | Get | Set | Member | ~"}" any)* "}"
     Member = DocComment? "static"? "#"? id
-    Method = DocComment* "static"? "async"? "#"? id "(" ListOf<Argument, ","> ")" Block
+    Method = DocComment* "static"? "async"? "#"? id "(" ListOf<Argument, ","> ")" MethodBlock
     Get = DocComment? "get" "#"? id "(" ")" Block
     Set = DocComment? "set" "#"? id "(" id ")" Block
-    Block = "{" (MemberDefinition | Block | ~"}" any)* "}"
+    MethodBlock = "{" (MemberDefinition | MethodBlock | ~"}" any)* "}"
     MemberDefinition = DocComment? "this" "." "#"? id "=" Expr<(MemberDefinition | Block | "}")>
     Export = "export" "default"?
 

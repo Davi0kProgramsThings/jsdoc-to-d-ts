@@ -16,6 +16,10 @@ Handlebars.registerHelper("join", function(array: string[], separator: string): 
     return array.join(separator);
 });
 
+Handlebars.registerHelper("replace", function(text: string, replace: string, _with: string): string {
+    return text.replaceAll(replace, _with);
+});
+
 Handlebars.registerHelper("indent", function(text: string, tabs: number): string {
     const indentation = " ".repeat(4 * tabs)
 

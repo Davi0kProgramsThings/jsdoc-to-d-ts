@@ -15,6 +15,7 @@ JSDOC {
     TagWithOneArgument = "@implements" TypeInBraces
                        | "@type" TypeInBraces
                        | "@returns" TypeInBraces
+                       | "@enum" TypeInBraces
 
     TagWithTwoArguments = "@param" TypeInBraces (id | optionalId)
                         | "@typedef" TypeInBraces id

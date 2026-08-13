@@ -1,4 +1,10 @@
 // This file has been automatically generated with jsdoc-to-d-ts
+{{#each enums}}
+{{#if documentation}}
+{{indent documentation 0}}
+{{/if}}
+export {{#if export.default}}default {{/if}}enum {{id}} {{replace body ":" " ="}}
+{{/each}}
 {{#each constants}}
 {{#if documentation}}
 {{indent documentation 0}}

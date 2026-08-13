@@ -1,6 +1,7 @@
 export type File = {
     importStatements: ImportStatement[];
     exportStatements: string[];
+    enums: Enum[];
     constants: Constant[];
     types: Type[];
     classes: Class[];
@@ -11,6 +12,15 @@ export type ImportStatement = {
     default?: string;
     import: string[];
     from: string;
+};
+
+export type Enum = {
+    id: string;
+    body: string;
+    documentation?: string;
+    export: {
+        default: boolean;
+    };
 };
 
 export type Constant = {
