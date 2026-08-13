@@ -12,6 +12,7 @@
         "sourceMap": true,
         "allowImportingTsExtensions": true,
         "rewriteRelativeImportExtensions": true,
+        "skipLibCheck": true,
         "types": ["node"]
     }
 }

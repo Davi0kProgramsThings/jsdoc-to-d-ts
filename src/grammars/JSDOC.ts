@@ -1,5 +1,7 @@
 import fs from "fs";
 
+import path from "path";
+
 import * as ohm from "ohm-js";
 
 export type DocCommentDescriptor = {
@@ -15,7 +17,9 @@ export type TagDescriptor = {
     arguments: string[];
 };
 
-const file = fs.readFileSync("grammars/JSDOC.ohm", "utf-8");
+const PATH = path.join(import.meta.dirname, "../../grammars/JSDOC.ohm");
+
+const file = fs.readFileSync(PATH, "utf-8");
 
 export const JSDOC = ohm.grammar(file);
 

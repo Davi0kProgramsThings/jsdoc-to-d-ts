@@ -1,5 +1,7 @@
 import fs from "fs";
 
+import path from "path";
+
 import * as ohm from "ohm-js";
 
 import { JSDOC, semanticsJSDOC } from "./JSDOC.ts";
@@ -60,7 +62,9 @@ export type ExportDescriptor = {
     default: boolean;
 };
 
-const file = fs.readFileSync("grammars/ES2022.ohm", "utf-8");
+const PATH = path.join(import.meta.dirname, "../../grammars/ES2022.ohm");
+
+const file = fs.readFileSync(PATH, "utf-8");
 
 export const ES2022 = ohm.grammar(file, { JSDOC });
 

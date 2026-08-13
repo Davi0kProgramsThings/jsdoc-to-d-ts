@@ -1,11 +1,10 @@
-import fs from "fs";
+#!/usr/bin/env node
 
+import fs from "fs";
 import path from "path";
 
 import fg from "fast-glob";
-
 import { Command } from "commander";
-
 import { readTSConfig } from "pkg-types";
 
 import { transpile } from "../index.ts";
@@ -23,13 +22,15 @@ function transpileFile(file: string): void {
 
     const content = fs.readFileSync(file, "utf-8");
 
+    const filename = toTypeScriptExtension(file)
+
     const output = transpile(content);
 
-    fs.writeFileSync(toTypeScriptExtension(file), output);
+    fs.writeFileSync(filename, output);
 }
 
-async function transpileProject(path?: string): Promise<void> {
-    const config = await readTSConfig(path);
+async function transpileProject(_path?: string): Promise<void> {
+    const config = await readTSConfig(_path);
 
     const include = config.include ?? ["**/*"];
 
@@ -41,15 +42,26 @@ async function transpileProject(path?: string): Promise<void> {
         onlyFiles: true
     });
 
-    const files = paths.filter(path => /\.(js|mjs)$/.test(path));
+    const files = paths.filter(_path => /\.(js|mjs)$/.test(_path));
 
     for (const file of files) {
         const content = fs.readFileSync(file, "utf-8");
 
+        const filename = toTypeScriptExtension(file)
+
         const output = transpile(content);
 
         if (output.split("\n").length > 2) {
-            fs.writeFileSync(toTypeScriptExtension(file), output);
+            console.log(config.compilerOptions.outDir)
+            if (config.compilerOptions.outDir) {
+                const root = process.cwd();
+                const sourceRoot = path.resolve(root, config.compilerOptions?.rootDir ?? ".");
+                const target = path.join(root, config.compilerOptions.outDir, path.relative(sourceRoot, filename));
+
+                fs.writeFileSync(target, output);
+            } else {
+                fs.writeFileSync(filename, output);
+            }
         }
     }
 }

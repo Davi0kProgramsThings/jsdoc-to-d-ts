@@ -3,6 +3,7 @@
     "version": "1.0.0-alpha.1",
     "main": "build/index.js",
     "type": "module",
+    "types": "build/index.d.ts",
     "bin": {
         "jsdoc-to-d-ts": "build/bin/jsdoc-to-d-ts.js"
     },

@@ -1,5 +1,7 @@
 import fs from "fs";
 
+import path from "path";
+
 import Handlebars from "handlebars";
 
 import { ES2022, semanticsES2022 } from "./grammars/ES2022.ts";
@@ -31,7 +33,9 @@ Handlebars.registerHelper("indent", function(text: string, tabs: number): string
     ].join("\n");
 });
 
-const TEMPLATE = fs.readFileSync("templates/index.hbs", "utf-8");
+const PATH = path.join(import.meta.dirname, "../templates/index.hbs");
+
+const TEMPLATE = fs.readFileSync(PATH, "utf-8");
 
 /**
  * Transpiles javascript code with jsdoc to typescript's type definitions.
