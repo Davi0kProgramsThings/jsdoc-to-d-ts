@@ -1,6 +1,21 @@
 {
     "name": "jsdoc-to-d-ts",
     "version": "1.0.0-alpha.1",
+    "description": "Lightweight transpiler to convert javascript with jsdoc to typescript's .d.ts files.",
+    "author": {
+        "name": "Davide Casale",
+        "email": "davi0kprogramsthings@gmail.com",
+        "url": "https://github.com/davi0kprogramsthings"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/davi0kprogramsthings/jsdoc-to-d-ts.git"
+    },
+    "bugs": {
+        "url": "https://github.com/davi0kprogramsthings/jsdoc-to-d-ts/issues"
+    },
+    "homepage": "https://github.com/davi0kprogramsthings/jsdoc-to-d-ts#readme",
+    "license": "MIT",
     "main": "build/index.js",
     "type": "module",
     "types": "build/index.d.ts",
