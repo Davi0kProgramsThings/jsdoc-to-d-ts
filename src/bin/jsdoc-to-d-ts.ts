@@ -76,13 +76,13 @@ function exitWithError(message: string): void {
 const program = new Command();
 
 program.name("jsdoc-to-d-ts")
-  .description("Blazing fast transpiler from JavaScript with JSDoc to TypeScript's type definitions")
-  .version("1.0.0", "-v, --version", "Outputs the version number")
-  .helpOption("-h, --help", "Displays help for command");
+  .description("lightweight transpiler to convert javascript with jsdoc to typescript's .d.ts files")
+  .version("1.0.0", "-v, --version")
+  .helpOption("-h, --help");
 
 program
-  .argument("[file]", "Transpiles a single file")
-  .option("-p, --project [config]", "The path of the tsconfig.json file of the project to transpile")
+  .argument("[file]", "transpile a single file")
+  .option("-p, --project [config]", "the path of the tsconfig.json file of the project to transpile")
   .action(async (file: string, options: { project?: string }) => {
     if (file) {
         transpileFile(file);
