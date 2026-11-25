@@ -1,52 +1,154 @@
 ES2022 <: JSDOC {
-    File = (ImportStatement | ExportStatement | Component | any)*
+    File = (ImportStatement | ExportStatement | Component | Atom)*
 
-    ImportStatement = "import" "{" ListOf<IdWithAlias, ","> "}" "from" String           -- import
-                    | "import" id ("," "{" ListOf<IdWithAlias, ","> "}")? "from" String -- importWithDefault
-                    | "import" "*" "as" id "from" String                                -- importWithWildcard
+    ImportStatement = keyword<"import"> NamedImports keyword<"from"> string                       -- import
+                    | keyword<"import"> id ("," NamedImports)? keyword<"from"> string             -- importWithDefault
+                    | keyword<"import"> "*" keyword<"as"> id keyword<"from"> string                    -- importWithWildcard
 
-    ExportStatement = "export" "{" ListOf<IdWithAlias, ","> "}" "from" String -- exportFrom
-                    | "export" "*" ("as" id)? "from" String                   -- exportFromWithWildcard
-                    | "export" "{" ListOf<IdWithAlias, ","> "}"               -- export
+    NamedImports = "{" ListOf<Specifier, ","> ","? "}"
 
-    Component = Class | Function | Constant | DocComment
-    
-    Constant = DocComment? "export"? Keyword id "=" Expr<(Component | ";")>   -- export
-             | DocComment? "export" "default" id "=" Expr<(Component | ";")>  -- exportDefault
-    Keyword = "var" | "let" | "const"
+    ExportStatement = keyword<"export"> NamedExports keyword<"from"> string                               -- exportFrom
+                    | keyword<"export"> "*" (keyword<"as"> id)? keyword<"from"> string                         -- exportFromWithWildcard
+                    | keyword<"export"> NamedExports                                                 -- export
+                    | keyword<"export"> keyword<"default"> id ~(~#endOfStatement InitializerContinuation) -- exportDefault
 
-    Function = DocComment* Export? "async"? "function" id "(" ListOf<Argument, ","> ")" Block
-    Block = "{" (Block | ~"}" any)* "}"
+    NamedExports = "{" ListOf<Specifier, ","> ","? "}"
 
-    Class = DocComment? Export? "class" id ("extends" id)? ClassBody
-    ClassBody = "{" (Method | Get | Set | Member | ~"}" any)* "}"
-    Member = DocComment? "static"? "#"? id ("=" Expr<(Member | Method | Get | Set | "}")>)?
-    Method = DocComment* "static"? "async"? "#"? id "(" ListOf<Argument, ","> ")" MethodBlock
-    Get = DocComment? "get" "#"? id "(" ")" MethodBlock
-    Set = DocComment? "set" "#"? id "(" id ")" MethodBlock
-    MethodBlock = "{" (MemberDefinition | MethodBlock | ~"}" any)* "}"
-    MemberDefinition = DocComment? "this" "." "#"? id "=" Expr<(MemberDefinition | MethodBlock | "}")>
-    Export = "export" "default"?
+    Specifier = id (keyword<"as"> id)?
 
-    IdWithAlias = id ("as" id)?
+    Component = Class | Function | Constant | docComment
 
-    Argument = (id | ExprInBrackets) ("=" Expr<("," | ")")>)?
+    Export = keyword<"export"> keyword<"default">?
 
-    Expr<stop> = (~stop (ExprInParenthesis | ExprInBrackets | String | bigInteger | any))+
+    Constant = docComment? keyword<"export">? VariableKind id "=" Initializer               -- declaration
+             | docComment? keyword<"export"> keyword<"default"> id "=" Initializer               -- exportDefault
+             | docComment? keyword<"export"> keyword<"default"> Initializer                      -- exportDefaultExpression
 
-    ExprInParenthesis = "(" (ExprInParenthesis | ExprInBrackets | String | bigInteger | (~")" any))+ ")"
-    
-    ExprInBrackets = "[" (ExprInParenthesis | ExprInBrackets | Comment | String | bigInteger | (~"]" any))+ "]"
-                   | "{" (ExprInParenthesis | ExprInBrackets | Comment | String | bigInteger | (~"}" any))+ "}"
+    VariableKind = keyword<"var"> | keyword<"let"> | keyword<"const">
 
-    String = "\"" (~"\"" any)* "\""
-           | "\'" (~"\'" any)* "\'"
-           | "`" (StringInterpolation | (~"`" any))* "`"
+    Function = docComment* Export? keyword<"async">? keyword<"function"> id? "(" Parameters ")" Block
 
-    StringInterpolation = "${" | Expr<"}"> | "}"
+    Class = docComment? Export? keyword<"class"> (~keyword<"extends"> id)? (keyword<"extends"> id)? ClassBody
 
-    Comment = "//" (~"\n" any)       -- lineComment
-            | "/*" (~"*/" any)* "*/" -- multiLineComment
+    ClassBody = "{" (Method | Get | Set | StaticBlock | Member | Token)* "}"
 
-    bigInteger = digit "n"
+    StaticBlock = keyword<"static"> MethodBlock
+
+    Member = docComment? keyword<"static">? "#"? id ("=" Initializer)?
+
+    Method = docComment* keyword<"static">? keyword<"async">? "#"? id "(" Parameters ")" MethodBlock
+
+    Get = docComment? keyword<"static">? keyword<"get"> "#"? id "(" ")" MethodBlock
+
+    Set = docComment? keyword<"static">? keyword<"set"> "#"? id "(" Parameter ")" MethodBlock
+
+    MethodBlock = "{" (MemberDefinition | MethodBlock | ~"}" Atom)* "}"
+
+    MemberDefinition = docComment? keyword<"this"> "." "#"? id "=" ~"=" &FunctionExpression -- function
+                     | docComment? keyword<"this"> "." "#"? id "=" ~"="                     -- value
+
+    Parameters = ListOf<Parameter, ",">
+
+    Parameter = "..." (id | BindingPattern)             -- rest
+              | (id | BindingPattern) ("=" Expression)? -- plain
+
+    BindingPattern = "{" ListOf<ObjectBindingProperty, ","> ","? "}" -- object
+                   | "[" ListOf<ArrayBindingElement, ","> ","? "]"   -- array
+
+    ObjectBindingProperty = "..." id                                          -- rest
+                          | id (":" (id | BindingPattern))? ("=" Expression)? -- property
+
+    ArrayBindingElement = "..." (id | BindingPattern)             -- rest
+                        | (id | BindingPattern) ("=" Expression)? -- element
+
+    Expression = (~"," Token)+
+
+    Initializer = ObjectLiteral ~(~#endOfStatement InitializerContinuation)   -- objectLiteral
+                | FunctionExpression                                          -- functionExpression
+                | Token (~#endOfStatement InitializerContinuation)*           -- expression
+
+    FunctionExpression = keyword<"async">? keyword<"function"> id? "(" Parameters ")" Block ~(~#endOfStatement InitializerContinuation) -- function
+                       | keyword<"async">? ArrowParameters "=>" ArrowBody                                                          -- arrow
+
+    ArrowParameters = "(" Parameters ")" -- parenthesized
+                    | id                 -- single
+
+    ArrowBody = Block ~(~#endOfStatement InitializerContinuation) -- block
+              | Initializer                                       -- expression
+
+    ObjectLiteral = "{" ListOf<Property, ","> ","? "}"
+
+    Property = docComment? (id | string) ":" Expression
+
+    InitializerContinuation = #("++" | "--") &#endOfStatement -- postfix
+                            | operator Token                  -- afterOperator
+                            | ~";" Token                      -- token
+
+    endOfStatement = (" " | "\t")* (lineTerminator | lineComment) space* (idStart | "#" | "/**")
+
+    operator = operatorCharacter+
+             | keyword<"new"> | keyword<"typeof"> | keyword<"instanceof"> | keyword<"in"> | keyword<"await">
+
+    operatorCharacter = "+" | "-" | "*" | "/" ~("/" | "*") | "%" | "&" | "|" | "^" | "!" | "~"
+                      | "<" | ">" | "=" | "?" | ":" | "," | "."
+
+    Block = "{" Token* "}"
+
+    Token = "(" Token* ")" division? -- parentheses
+          | "[" Token* "]" division? -- squareBrackets
+          | "{" Token* "}"           -- braces
+          | ~closingBracket Atom
+
+    Atom = string | templateLiteral | docComment | regexLiteral | Operand | any
+
+    Operand = (~regexKeyword id | number | ")" | "]") division?
+
+    regexKeyword = keyword<"return"> | keyword<"typeof"> | keyword<"case"> | keyword<"do"> | keyword<"else"> | keyword<"in"> | keyword<"of">
+                 | keyword<"instanceof"> | keyword<"new"> | keyword<"delete"> | keyword<"void"> | keyword<"throw"> | keyword<"yield"> | keyword<"await">
+
+    division = "/" ~("/" | "*")
+
+    number = digit (idPart | decimal)*
+
+    decimal = "." digit
+
+    regexLiteral = "/" ~("/" | "*") regexCharacter+ "/" idPart*
+
+    regexCharacter = regexClass
+                   | regexEscape
+                   | ~("/" | "[" | lineTerminator) any
+
+    regexClass = "[" (regexEscape | ~("]" | lineTerminator) any)* "]"
+
+    regexEscape = "\\" ~lineTerminator any
+
+    closingBracket = ")" | "]" | "}"
+
+    keyword<word> = word ~idPart
+
+    string = "\"" (~"\"" ~lineTerminator stringCharacter)* "\""
+           | "'" (~"'" ~lineTerminator stringCharacter)* "'"
+
+    stringCharacter = "\\"? any
+
+    templateLiteral = "`" (templateSubstitution | ~"`" stringCharacter)* "`"
+
+    templateSubstitution = "${" templateSubstitutionContent* "}"
+
+    templateSubstitutionContent = string
+                                | templateLiteral
+                                | comment
+                                | docComment
+                                | "{" templateSubstitutionContent* "}" -- braces
+                                | ~"}" any                             -- any
+
+    space += comment
+
+    comment = lineComment | blockComment
+
+    lineComment = "//" (~lineTerminator any)*
+
+    blockComment = "/*" ~("*" ~"/") (~"*/" any)* "*/"
+
+    lineTerminator = "\n" | "\r" | " " | " "
 }

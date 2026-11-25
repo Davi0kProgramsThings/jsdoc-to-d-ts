@@ -16,8 +16,8 @@ Handlebars.registerHelper("join", function(array: string[], separator: string): 
     return array.join(separator);
 });
 
-Handlebars.registerHelper("replace", function(text: string, replace: string, _with: string): string {
-    return text.replaceAll(replace, _with);
+Handlebars.registerHelper("indentType", function(type: string, tabs: number): string {
+    return type.replaceAll("\n", "\n" + " ".repeat(4 * tabs));
 });
 
 Handlebars.registerHelper("indent", function(text: string, tabs: number): string {

@@ -1,280 +1,230 @@
-# jsdoc-to-d-ts
+jsdoc-to-d-ts
+=============
 
-## Index
-1. [Installation](#installation)
-2. [Usage](#usage)
-3. [Examples](#examples)
+[![npm](https://img.shields.io/npm/v/jsdoc-to-d-ts)](https://www.npmjs.com/package/jsdoc-to-d-ts)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-## Installation
+`jsdoc-to-d-ts` is a lightweight transpiler that converts **JavaScript** with **JSDoc** into **TypeScript** declaration files (`.d.ts`).
+
+It reads your project's `tsconfig.json` just like `tsc`, so it can replace it in any project that already generates its types from JSDoc. Unlike `tsc`, it emits real `enum`s, `abstract` classes and `interface`s, and drops every `@internal` declaration.
+
+* [Installation](#installation)
+* [Usage](#usage)
+* [Transpile a single file](#transpile-a-single-file)
+* [Transpile an entire project](#transpile-an-entire-project)
+* [Validate the output with tsc](#validate-the-output-with-tsc)
+* [API](#api)
+* [Example](#example)
+* [License](#license)
+
+Installation
+------------
 
 ```console
 npm install --save-dev jsdoc-to-d-ts
 ```
 
-## Usage
+Usage
+-----
 
 ```console
 Usage: jsdoc-to-d-ts [options] [file]
 
-lightweight transpiler to convert javascript with jsdoc to typescript's .d.ts files
+lightweight transpiler to convert javascript with jsdoc to typescript's .d.ts
+files
 
 Arguments:
-  file                    transpiles a single file
+  file                    transpile a single file
 
 Options:
   -v, --version           output the version number
-  -p, --project [config]  the path of the tsconfig.json file of the project to transpile
+  -p, --project [config]  the path of the tsconfig.json file of the project to
+                          transpile
   -h, --help              display help for command
 ```
 
-## Examples
+Transpile a single file
+-----------------------
 
-### Abstract classes
+The quickest way to try the tool is to pass it the path of a JavaScript file:
 
-#### Javascript file
+```console
+npx jsdoc-to-d-ts src/wallet.js
+```
 
-```javascript
-/**
- * An abstract class.
- * 
- * @abstract
- */
-export default class Vehicle {
-    /**
-     * Creates a new vehicle.
-     * 
-     * @param {number} mileage - The initial mileage of the vehicle.
-     */
-    constructor (mileage) {
-        /**
-         * The total mileage of the vehicle.
-         * 
-         * @protected
-         * @type {number}
-         */
-        this._mileage = mileage
-    }
+The declarations are written next to the source file, in `src/wallet.d.ts` (or in a `.d.mts` file for `.mjs` sources).
 
-    /**
-     * A concrete method.
-     * 
-     * @returns {number} The total mileage of the vehicle.
-     */
-    get mileage() {
-        return this._mileage;
-    }
+Transpile an entire project
+---------------------------
 
-    /**
-     * An abstract method.
-     * 
-     * @abstract
-     * @param {number} miles - The number of miles to drive. 
-     */
-    drive(miles) {
-        throw new Error("Method 'drive(miles)' is not implemented.");
+Run the tool with no arguments to transpile a whole project:
+
+```console
+npx jsdoc-to-d-ts
+```
+
+It looks for a `tsconfig.json` in the current directory or in its parents, and reads `include`, `exclude`, `rootDir` and `outDir` from it, like `tsc` does:
+
+```json
+{
+    "include": ["src/**/*.js"],
+    "compilerOptions": {
+        "rootDir": "./src",
+        "outDir": "./types"
     }
 }
 ```
 
-#### jsdoc-to-d-ts
+Every `.js` and `.mjs` file matched by `include` is transpiled into `outDir`. Without `outDir`, each declaration file is written next to its source.
 
-```typescript
-/**
- * An abstract class.
- * 
- * @abstract
- */
-export default abstract class Vehicle {
+To use a different configuration file, pass its path (or the path of its folder) with `-p`:
+
+```console
+npx jsdoc-to-d-ts -p tsconfig.build.json
+```
+
+In a project that already builds its types with `tsc`, replacing the command is usually enough:
+
+```json
+{
+    "scripts": {
+        "build:types": "jsdoc-to-d-ts"
+    }
+}
+```
+
+Validate the output with tsc
+----------------------------
+
+`jsdoc-to-d-ts` only transpiles: it doesn't check that the generated declarations are valid. Keep `typescript` as a development dependency and use it to validate the output, without emitting anything.
+
+Create a `tsconfig.check.json` that includes the generated files:
+
+```json
+{
+    "include": ["types/**/*.d.ts", "types/**/*.d.mts"],
+    "compilerOptions": {
+        "module": "nodenext",
+        "strict": true,
+        "noEmit": true,
+        "skipLibCheck": false,
+        "types": ["node"]
+    }
+}
+```
+
+Then run it right after the transpilation:
+
+```json
+{
+    "scripts": {
+        "build:types": "jsdoc-to-d-ts && npm run check:types",
+        "check:types": "tsc -p tsconfig.check.json"
+    }
+}
+```
+
+`skipLibCheck` must stay `false`, otherwise `tsc` skips every `.d.ts` file, including the generated ones. List in `types` the `@types` packages your declarations rely on: since TypeScript 6 they are no longer included by default.
+
+API
+---
+
+The transpiler can also be used programmatically:
+
+```js
+import { transpile } from "jsdoc-to-d-ts";
+
+const declarations = transpile(source);
+```
+
+`transpile` takes the JavaScript source code as a string and returns the content of the corresponding `.d.ts` file. It doesn't read or write any file.
+
+Example
+-------
+
+Given the following JavaScript file:
+
+```js
+/** @enum {string} */
+export const Network = {
+    MAINNET: "mainnet",
+    TESTNET: "testnet"
+};
+
+/** @abstract */
+export default class Wallet {
     /**
-     * The total mileage of the vehicle.
-     * 
-     * @protected
-     * @type {number}
+     * @param {string} seed - The seed phrase.
+     * @param {Object} [options]
+     * @param {Network} [options.network]
      */
-    protected _mileage: number;
+    constructor(seed, options = {}) {
+        /** @protected @type {string} */
+        this._seed = seed;
+    }
+
     /**
-     * Creates a new vehicle.
-     * 
-     * @param {number} mileage - The initial mileage of the vehicle.
-     */
-    constructor(mileage: number);
-    /**
-     * A concrete method.
-     * 
-     * @returns {number} The total mileage of the vehicle.
-     */
-    get mileage(): any;
-    /**
-     * An abstract method.
-     * 
      * @abstract
-     * @param {number} miles - The number of miles to drive. 
+     * @returns {Promise<bigint>}
      */
-    abstract drive(miles: number): any;
+    async getBalance() {}
 }
 ```
 
-#### tsc
+`jsdoc-to-d-ts` generates:
 
-```typescript
-/**
- * An abstract class.
- *
- * @abstract
- */
-export default class Vehicle {
+```ts
+// This file has been automatically generated with jsdoc-to-d-ts
+/** @enum {string} */
+export enum Network {
+    MAINNET = "mainnet",
+    TESTNET = "testnet"
+}
+/** @abstract */
+export default abstract class Wallet {
+    /** @protected @type {string} */
+    protected _seed: string;
     /**
-     * Creates a new vehicle.
-     *
-     * @param {number} mileage - The initial mileage of the vehicle.
+     * @param {string} seed - The seed phrase.
+     * @param {Object} [options]
+     * @param {Network} [options.network]
      */
-    constructor(mileage: number);
+    constructor(seed: string, options?: {
+        network?: Network;
+    });
     /**
-     * The total mileage of the vehicle.
-     *
-     * @protected
-     * @type {number}
-     */
-    protected _mileage: number;
-    /**
-     * A concrete method.
-     *
-     * @returns {number} The total mileage of the vehicle.
-     */
-    get mileage(): number;
-    /**
-     * An abstract method.
-     *
      * @abstract
-     * @param {number} miles - The number of miles to drive.
+     * @returns {Promise<bigint>}
      */
-    drive(miles: number): void;
+    abstract getBalance(): Promise<bigint>;
 }
 ```
 
-### Internals
+License
+-------
 
-#### Javascript file
+This project is released under the **MIT License**:
 
-```javascript
-/**
- * @typedef {Object} Student
- * @property {string} name - The student's name.
- * @property {Date} dateOfBirth - The student's date of birth.
- * @property {Date} [dateOfGraduation] - The student's date of graduation.
- * @property {"Computer science" | "Chemistry" | "Physics" | "Economics"} faculty - The student's faculty.
- */
-
-/**
- * Fetches students from the DB.
- * 
- * @internal
- * @param {Query} [query] - An optional query to filter students.
- * @returns {Student[]} A list of students.
- */
-export async function fetchStudents(query) {
-    [...]
-}
 ```
+MIT License
 
-#### jsdoc-to-d-ts
+Copyright (c) 2026 Davide Casale
 
-```typescript
-export type Student = {
-    /*
-     * The student's name.
-     */
-    name: string;
-    /*
-     * The student's date of birth.
-     */
-    dateOfBirth: Date;
-    /*
-     * The student's date of graduation.
-     */
-    dateOfGraduation?: Date;
-    /*
-     * The student's faculty.
-     */
-    faculty: "Computer science" | "Chemistry" | "Physics" | "Economics";
-};
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 ```
-
-#### tsc
-
-```typescript
-/**
- * Fetches students from the DB.
- *
- * @internal
- * @param {Query} [query] - An optional query to filter students.
- * @returns {Student[]} A list of students.
- */
-export function fetchStudents(query?: Query): Student[];
-export type Student = {
-    /**
-     * - The student's name.
-     */
-    name: string;
-    /**
-     * - The student's date of birth.
-     */
-    dateOfBirth: Date;
-    /**
-     * - The student's date of graduation.
-     */
-    dateOfGraduation?: Date;
-    /**
-     * - The student's faculty.
-     */
-    faculty: "Computer science" | "Chemistry" | "Physics" | "Economics";
-};
-```
-
-### Enumerations
-
-#### Javascript file
-
-```javascript
-/**
- * Enum for fruits.
- * 
- * @enum {string}
- */
-export const Fruit = {
-    APPLE: "APPLE",
-    PEAR: "PEAR",
-    BANANA: "BANANA"
-};
-```
-
-#### jsdoc-to-d-ts
-
-```typescript
-/**
- * Enum for fruits.
- * 
- * @enum {string}
- */
-export enum Fruit {
-    APPLE = "APPLE",
-    PEAR = "PEAR",
-    BANANA = "BANANA"
-}
-```
-
-#### tsc
-
-```typescript
-/**
- * Enum for fruits.
- */
-export type Fruit = string;
-export namespace Fruit {
-    let APPLE: string;
-    let PEAR: string;
-    let BANANA: string;
-}
-```
-
-

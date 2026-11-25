@@ -1,13 +1,189 @@
-import type { Class, Constant, Enum, File, Function, Member, Method, Type } from "./types.ts";
+import type { Argument, Class, Constant, Enum, File, Function, FunctionType, GenericType, Member, Method, Type } from "./types.ts";
 
-import type { DocCommentDescriptor } from "./grammars/JSDOC.ts";
+import type { DocCommentDescriptor, TagDescriptor } from "./grammars/JSDOC.ts";
 
-import type { ClassDescriptor, ConstantDescriptor, FileDescriptor, FunctionDescriptor, MemberDescriptor, MethodDescriptor } from "./grammars/ES2022.ts";
+import type { ArgumentDescriptor, ClassDescriptor, ConstantDescriptor, FunctionExpressionDescriptor, FileDescriptor, FunctionDescriptor, MemberDescriptor, MethodDescriptor } from "./grammars/ES2022.ts";
 
-function trimChars(str: string, characters: string): string {
-    const escaped = characters.replace(/[.*+?^${}()|[\]\\-]/g, "\\$&");
-    const regex = new RegExp(`^[${escaped}]+|[${escaped}]+$`, "g");
-    return str.replace(regex, "");
+type Property = {
+    id: string;
+    type: string;
+    optional: boolean;
+    description?: string;
+    properties: Property[];
+};
+
+function getDescription(description?: string): string | undefined {
+    const content = description?.replace(/^[ *\n-]+|[ *\n-]+$/g, "");
+
+    return content ? "/**\n * " + content.replace(/\n\s*\*/g, "\n *") + "\n */" : undefined;
+}
+
+function getProperties(tags: TagDescriptor[]): Property[] {
+    const properties: Property[] = [];
+
+    for (const { arguments: [type, name, description] } of tags) {
+        const optional = name.startsWith("[") && name.endsWith("]");
+
+        const path = (optional ? name.slice(1, -1) : name)
+            .split(".")
+            .map(segment => segment.replace(/\[\]$/, ""));
+
+        const siblings = path
+            .slice(0, -1)
+            .reduce<Property[] | undefined>((siblings, segment) => siblings?.find(({ id }) => id == segment)?.properties, properties);
+
+        siblings?.push({
+            id: path[path.length - 1],
+            type,
+            optional,
+            description,
+            properties: []
+        });
+    }
+
+    return properties;
+}
+
+function getObjectTypeSuffix(type: string): string | undefined {
+    if (/^Array\.?<\s*(Object|object)\s*>$/.test(type)) {
+        return "[]";
+    }
+
+    return /^(?:Object|object)((?:\[\])*)$/.exec(type)?.[1];
+}
+
+function getType(property: Property, documented: boolean): string {
+    const suffix = getObjectTypeSuffix(property.type);
+
+    if (property.properties.length == 0 || suffix === undefined) {
+        return property.type;
+    }
+
+    const lines = property.properties.flatMap(child => {
+        const description = documented ? getDescription(child.description) : undefined;
+
+        const declaration = `${child.id}${child.optional ? "?" : ""}: ${getType(child, documented)};`;
+
+        return [...description?.split("\n") ?? [], ...declaration.split("\n")];
+    });
+
+    return ["{", ...lines.map(line => "    " + line), "}"].join("\n") + suffix;
+}
+
+function requiresParentheses(type: string): boolean {
+    let depth = 0;
+
+    for (const character of type) {
+        if ("([{<".includes(character)) {
+            depth++;
+        } else if (")]}>".includes(character)) {
+            depth--;
+        } else if (depth == 0 && /[\s|&?:=]/.test(character)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function getVariadicType(type: string): string {
+    const element = type.slice(3).trim();
+
+    if (element == "*") {
+        return "any[]";
+    }
+
+    return (requiresParentheses(element) ? `(${element})` : element) + "[]";
+}
+
+function getArgument(property: Property, rest: boolean, optional: boolean): Argument {
+    const type = getType(property, false);
+
+    return {
+        id: property.id,
+        type: type.startsWith("...") ? getVariadicType(type) : type,
+        optional: (property.optional || optional) && !rest,
+        rest
+    };
+}
+
+function getArguments(docCommentDescriptor: DocCommentDescriptor | undefined, argumentDescriptors: ArgumentDescriptor[]): Argument[] {
+    const properties = getProperties(docCommentDescriptor?.getTags("@param") ?? []);
+
+    if (docCommentDescriptor?.getTag("@overload")) {
+        return properties.map(property => getArgument(property, property.type.startsWith("..."), false));
+    }
+
+    const names = new Set(argumentDescriptors.map(({ id }) => id));
+
+    return argumentDescriptors.map(({ id, rest, optional }, index) => {
+        const isBindingPattern = id.startsWith("{") || id.startsWith("[");
+
+        const property = isBindingPattern
+            ? properties[index] && !names.has(properties[index].id) ? properties[index] : undefined
+            : properties.find(property => property.id == id);
+
+        if (!property) {
+            return {
+                id,
+                type: rest ? "any[]" : "any",
+                optional,
+                rest
+            };
+        }
+
+        return getArgument(property, rest, optional);
+    });
+}
+
+function getGenericTypes(docCommentDescriptor?: DocCommentDescriptor): GenericType[] | undefined {
+    return docCommentDescriptor?.getTags("@template").map(({ arguments: [_type, id, _default] }) => ({
+        id,
+        type: _type,
+        default: _default
+    }));
+}
+
+function getReturns(docCommentDescriptor?: DocCommentDescriptor): string {
+    return docCommentDescriptor?.getTags(["@returns", "@return"])[0]?.arguments[0] ?? "any";
+}
+
+function getSignatures(docCommentDescriptors: DocCommentDescriptor[]): DocCommentDescriptor[] {
+    const overloads = docCommentDescriptors.filter(docCommentDescriptor => docCommentDescriptor.getTag("@overload"));
+
+    return overloads.length > 0 ? overloads : docCommentDescriptors;
+}
+
+function getDefaultName(fileDescriptor: FileDescriptor): string {
+    const names = new Set([
+        ...fileDescriptor.components.map(component => component.type == "doc-comment"
+            ? component.getTag("@typedef")?.arguments[1].split("<")[0]
+            : component.id),
+        ...fileDescriptor.importStatements.flatMap(({ default: _default, import: specifiers }) => [
+            _default,
+            ...specifiers.map(({ id, alias }) => alias ?? id)
+        ])
+    ]);
+
+    let name = "_default";
+
+    for (let index = 1; names.has(name); index++) {
+        name = `_default_${index}`;
+    }
+
+    return name;
+}
+
+function getFunctionType(docCommentDescriptor: DocCommentDescriptor | undefined, functionExpressionDescriptor?: FunctionExpressionDescriptor): FunctionType | undefined {
+    if (!functionExpressionDescriptor || docCommentDescriptor?.getTag("@type")) {
+        return undefined;
+    }
+
+    return {
+        arguments: getArguments(docCommentDescriptor, functionExpressionDescriptor.arguments),
+        returns: getReturns(docCommentDescriptor),
+        genericTypes: getGenericTypes(docCommentDescriptor)
+    };
 }
 
 function getKeyword(classDescriptor: ClassDescriptor): "class" | "abstract class" | "interface" {
@@ -22,11 +198,21 @@ function getKeyword(classDescriptor: ClassDescriptor): "class" | "abstract class
     return "class";
 }
 
-function getVisibilityModifier(docCommentDescriptor?: DocCommentDescriptor): "public" | "protected" | "private" {
-    if (docCommentDescriptor?.getTag("@private")) {
-        return "private";
+function getExtends(classDescriptor: ClassDescriptor): string[] {
+    if (!classDescriptor.extends) {
+        return [];
     }
 
+    const type = classDescriptor.doc?.getTags(["@extends", "@augments"])[0]?.arguments[0];
+
+    if (type && type.split("<")[0].trim() == classDescriptor.extends) {
+        return [type];
+    }
+
+    return [classDescriptor.extends];
+}
+
+function getVisibilityModifier(docCommentDescriptor?: DocCommentDescriptor): "public" | "protected" {
     if (docCommentDescriptor?.getTag("@protected")) {
         return "protected";
     }
@@ -42,7 +228,7 @@ function includesReferenceToName(file: Omit<File, "importStatements">, name?: st
     }
 
     for (const exportStatement of file.exportStatements) {
-        if (exportStatement.match(pattern)?.includes(name)) {
+        if (exportStatement.default == name || exportStatement.specifiers.some(({ id }) => id == name)) {
             return true;
         }
     }
@@ -72,8 +258,10 @@ function includesReferenceToName(file: Omit<File, "importStatements">, name?: st
     }
 
     for (const _class of file.classes) {
-        if (_class.extends.includes(name) || _class.implements.includes(name)) {
-            return true;
+        for (const type of [..._class.extends, ..._class.implements]) {
+            if (type.match(pattern)?.includes(name)) {
+                return true;
+            }
         }
 
         for (const member of _class.members) {
@@ -122,72 +310,47 @@ function includesReferenceToName(file: Omit<File, "importStatements">, name?: st
     return false;
 }
 
-function preProcessEnum(constantDescriptor: ConstantDescriptor): Enum {
+function preProcessEnum(constantDescriptor: ConstantDescriptor & { id: string }): Enum {
     return {
         id: constantDescriptor.id,
-        body: constantDescriptor.expr,
+        members: constantDescriptor.properties!.map(({ doc, id, value }) => ({
+            id,
+            value,
+            documentation: doc?.raw
+        })),
         documentation: constantDescriptor.doc?.raw,
-        export: {
-            default: constantDescriptor.export!.default
-        }
+        export: constantDescriptor.export
     };
 }
 
-function preProcessConstant(constantDescriptor: ConstantDescriptor): Constant {
+function preProcessConstant(constantDescriptor: ConstantDescriptor & { id: string }): Constant {
     return {
         id: constantDescriptor.id,
         type: constantDescriptor.doc?.getTag("@type")?.arguments[0] ?? "any",
+        function: getFunctionType(constantDescriptor.doc, constantDescriptor.function),
         keyword: constantDescriptor.keyword,
         documentation: constantDescriptor.doc?.raw,
-        export: {
-            default: constantDescriptor.export!.default
-        }
+        export: constantDescriptor.export
     };
 }
 
 function preProcessFunction(docCommentDescriptor: DocCommentDescriptor | undefined, functionDescriptor: FunctionDescriptor): Function {
-    const _arguments = docCommentDescriptor?.getTags("@param")
-        .map(({ arguments: [_type, id] }, index) => {
-            const argument = functionDescriptor.arguments[index];
+    const _arguments = getArguments(docCommentDescriptor, functionDescriptor.arguments);
 
-            if (argument) {
-                return {
-                    id: argument,
-                    type: _type ?? "any",
-                    optional: id.startsWith("[") && id.endsWith("]")
-                };
-            }
-
-            return undefined;
-        })
-        .filter(argument => !!argument);
-
-    const _returns = docCommentDescriptor?.getTag("@returns")?.arguments[0] ?? "any"
+    const _returns = getReturns(docCommentDescriptor);
 
     return {
         id: functionDescriptor.id,
-        arguments: _arguments ?? [],
+        arguments: _arguments,
         returns: _returns,
         documentation: docCommentDescriptor?.raw,
-        genericTypes: docCommentDescriptor?.getTags("@template").map(({ arguments: [_type, id, _default] }) => ({
-            id,
-            type: _type,
-            default: _default
-        })),
-        export: {
-            default: functionDescriptor.export!.default
-        }
+        genericTypes: getGenericTypes(docCommentDescriptor),
+        export: functionDescriptor.export
     };
 }
 
 function preProcessClass(classDescriptor: ClassDescriptor): Class {
     const docCommentDescriptor = classDescriptor.doc;
-
-    const _extends = new Set(
-        docCommentDescriptor
-            ? docCommentDescriptor.getTags("@extends").map(({ arguments: [id] }) => id)
-            : []
-    );
 
     const _implements = new Set(
         docCommentDescriptor
@@ -206,7 +369,11 @@ function preProcessClass(classDescriptor: ClassDescriptor): Class {
             continue;
         }
 
-        for (const docCommentDescriptor of methodDecriptor.docs) {
+        if (methodDecriptor.docs.length == 0) {
+            methods.push(preProcessClassMethod(undefined, methodDecriptor));
+        }
+
+        for (const docCommentDescriptor of getSignatures(methodDecriptor.docs)) {
             if (docCommentDescriptor.getTag("@private")) {
                 continue;
             }
@@ -218,19 +385,13 @@ function preProcessClass(classDescriptor: ClassDescriptor): Class {
     return {
         id: classDescriptor.id,
         keyword: getKeyword(classDescriptor),
-        extends: [ ...!classDescriptor.extends ? _extends : _extends.add(classDescriptor.extends)],
+        extends: getExtends(classDescriptor),
         implements: [..._implements],
         members,
         methods,
         documentation: classDescriptor.doc?.raw,
-        genericTypes: classDescriptor.doc?.getTags("@template").map(({ arguments: [_type, id, _default] }) => ({
-            id,
-            type: _type,
-            default: _default
-        })),
-        export: {
-            default: classDescriptor.export!.default
-        }
+        genericTypes: getGenericTypes(classDescriptor.doc),
+        export: classDescriptor.export
     }
 }
 
@@ -238,49 +399,33 @@ function preProcessClassMember(memberDescriptor: MemberDescriptor): Member {
     return {
         id: memberDescriptor.id,
         type: memberDescriptor.doc?.getTag("@type")?.arguments[0] ?? "any",
+        function: getFunctionType(memberDescriptor.doc, memberDescriptor.function),
         static: memberDescriptor.static,
+        readonly: !!memberDescriptor.doc?.getTag("@readonly"),
         visibility: getVisibilityModifier(memberDescriptor.doc),
         documentation: memberDescriptor.doc?.raw
     };
 }
 
 function preProcessClassMethod(docCommentDescriptor: DocCommentDescriptor | undefined, methodDescriptor: Omit<MethodDescriptor, "docs" | "memberDefinitions">): Method {
-    const _arguments = docCommentDescriptor?.getTags("@param")
-        .map(({ arguments: [_type, id] }, index) => {
-            const argument = methodDescriptor.arguments[index];
-
-            if (argument) {
-                return {
-                    id: argument,
-                    type: _type ?? "any",
-                    optional: id.startsWith("[") && id.endsWith("]")
-                };
-            }
-
-            return undefined;
-        })
-        .filter(argument => !!argument);
+    const _arguments = getArguments(docCommentDescriptor, methodDescriptor.arguments);
 
     const _returns =  methodDescriptor.id == "constructor" || methodDescriptor.property == "set"
         ? undefined
         : methodDescriptor.property == "get"
             ? docCommentDescriptor?.getTag("@type")?.arguments[0] ?? "any"
-            : docCommentDescriptor?.getTag("@returns")?.arguments[0] ?? "any";
+            : getReturns(docCommentDescriptor);
 
     return {
         id: methodDescriptor.id,
         static: methodDescriptor.static,
         visibility: getVisibilityModifier(docCommentDescriptor),
         abstract: !!docCommentDescriptor?.getTag("@abstract"),
-        arguments: _arguments ?? [],
+        arguments: _arguments,
         returns: _returns,
         property: methodDescriptor.property,
         documentation: docCommentDescriptor?.raw,
-        genericTypes: docCommentDescriptor?.getTags("@template").map(({ arguments: [_type, id, _default] }) => ({
-            id,
-            type: _type,
-            default: _default
-        }))
+        genericTypes: getGenericTypes(docCommentDescriptor)
     };
 }
 
@@ -290,24 +435,25 @@ function preProcessType(docCommentDescriptor: DocCommentDescriptor): Type {
     return {
         id: typedef!.arguments[1],
         type: typedef!.arguments[0],
-        properties: docCommentDescriptor.getTags(["@prop", "@property"]).map(({ arguments: [_type, id, description] }) => {
-            const isOptional = id.startsWith("[") && id.endsWith("]");
-
-            const content = trimChars(description, " -*\n");
-
-            return {
-                id: !isOptional ? id : id.slice(1, id.length - 1),
-                type: _type,
-                optional: isOptional,
-                description: content ? "/*\n * " + content + "\n */" : undefined
-            }
-        })
+        genericTypes: typedef!.arguments[1].includes("<") ? undefined : getGenericTypes(docCommentDescriptor),
+        properties: getProperties(docCommentDescriptor.getTags(["@prop", "@property"])).map(property => ({
+            id: property.id,
+            type: getType(property, true),
+            optional: property.optional,
+            description: getDescription(property.description)
+        }))
     };
 }
 
 export function preProcess(fileDescriptor: FileDescriptor): File {
+    const exportedNames = new Set<string | undefined>(fileDescriptor.exportStatements
+        .filter(({ from }) => !from)
+        .flatMap(({ default: _default, specifiers }) => _default ? [_default] : specifiers.map(({ id }) => id)));
+
+    const internalNames = new Set<string | undefined>();
+
     const file: Omit<File, "importStatements"> = {
-        exportStatements: fileDescriptor.exportStatements,
+        exportStatements: [],
         enums: [],
         constants: [],
         functions: [],
@@ -315,25 +461,47 @@ export function preProcess(fileDescriptor: FileDescriptor): File {
         types: []
     };
 
+    const defaultName = getDefaultName(fileDescriptor);
+
     for (const component of fileDescriptor.components) {
         switch (component.type) {
             case "constant":
-                if (!component.export || component.doc?.getTag("@internal")) {
+                if (!component.export && !exportedNames.has(component.id)) {
                     continue;
                 }
 
-                component.doc?.getTag("@enum")
-                    ? file.enums.push(preProcessEnum(component))
-                    : file.constants.push(preProcessConstant(component));
+                if (component.doc?.getTag("@internal")) {
+                    internalNames.add(component.id);
+
+                    continue;
+                }
+
+                const constant = { ...component, id: component.id ?? defaultName };
+
+                constant.doc?.getTag("@enum") && constant.properties
+                    ? file.enums.push(preProcessEnum(constant))
+                    : file.constants.push(preProcessConstant(constant));
 
                 break;
 
             case "function":
-                if (!component.export) {
+                if (!component.export && !exportedNames.has(component.id)) {
                     continue;
                 }
 
-                for (const docCommentDescriptor of component.docs) {
+                const signatures = getSignatures(component.docs);
+
+                if (signatures.length > 0 && signatures.every(docCommentDescriptor => docCommentDescriptor.getTag("@internal"))) {
+                    internalNames.add(component.id);
+
+                    continue;
+                }
+
+                if (signatures.length == 0) {
+                    file.functions.push(preProcessFunction(undefined, component));
+                }
+
+                for (const docCommentDescriptor of signatures) {
                     if (docCommentDescriptor.getTag("@internal")) {
                         continue;
                     }
@@ -344,7 +512,13 @@ export function preProcess(fileDescriptor: FileDescriptor): File {
                 break;
 
             case "class":
-                if (!component.export || component.doc?.getTag("@internal")) {
+                if (!component.export && !exportedNames.has(component.id)) {
+                    continue;
+                }
+
+                if (component.doc?.getTag("@internal")) {
+                    internalNames.add(component.id);
+
                     continue;
                 }
 
@@ -363,15 +537,33 @@ export function preProcess(fileDescriptor: FileDescriptor): File {
         }
     }
 
+    file.exportStatements = fileDescriptor.exportStatements.flatMap(({ raw, from, default: _default, specifiers }) => {
+        if (from) {
+            return [{ raw, specifiers: [] }];
+        }
+
+        if (_default) {
+            return internalNames.has(_default) ? [] : [{ default: _default, specifiers: [] }];
+        }
+
+        const visibleSpecifiers = specifiers.filter(({ id }) => !internalNames.has(id));
+
+        return specifiers.length > 0 && visibleSpecifiers.length == 0 ? [] : [{ specifiers: visibleSpecifiers }];
+    });
+
     return {
         ...file,
         importStatements: fileDescriptor.importStatements
             .map(importStatementDescriptor => ({
                 wildcard: importStatementDescriptor.wildcard,
                 default: includesReferenceToName(file, importStatementDescriptor.default) ? importStatementDescriptor.default : undefined,
-                import: importStatementDescriptor.import.filter(name => includesReferenceToName(file, name)),
-                from: importStatementDescriptor.from
+                import: importStatementDescriptor.import.filter(({ id, alias }) => includesReferenceToName(file, alias ?? id)),
+                from: importStatementDescriptor.from,
+                typeOnly: importStatementDescriptor.typeOnly
             }))
             .filter(importStatement => importStatement.default || importStatement.import.length > 0)
+            .flatMap(importStatement => importStatement.typeOnly && importStatement.default && importStatement.import.length > 0
+                ? [{ ...importStatement, import: [] }, { ...importStatement, default: undefined }]
+                : [importStatement])
     }
 }

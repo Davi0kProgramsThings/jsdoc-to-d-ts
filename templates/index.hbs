@@ -1,59 +1,79 @@
 // This file has been automatically generated with jsdoc-to-d-ts
+{{#*inline "modifiers"}}{{#if export}}export {{#if export.default}}default {{/if}}{{else}}declare {{/if}}{{/inline~}}
+{{#*inline "genericTypes"}}{{#if genericTypes}}<{{#each genericTypes}}{{id}}{{#if type}} extends {{type}}{{/if}}{{#if default}} = {{default}}{{/if}}{{#unless @last}}, {{/unless}}{{/each}}>{{/if}}{{/inline~}}
+{{#*inline "arguments"}}{{#each arguments}}{{#if rest}}...{{/if}}{{id}}{{#if optional}}?{{/if}}: {{indentType type ../tabs}}{{#unless @last}}, {{/unless}}{{/each}}{{/inline~}}
+{{#*inline "valueType"}}{{#if function}}{{#with function}}{{> genericTypes}}({{> arguments tabs=../tabs}}) => {{returns}}{{/with}}{{else}}{{indentType type tabs}}{{/if}}{{/inline~}}
 {{#each enums}}
 {{#if documentation}}
 {{indent documentation 0}}
 {{/if}}
-export {{#if export.default}}default {{/if}}enum {{id}} {{replace body ":" " ="}}
+{{#if export.default}}declare {{else}}{{> modifiers}}{{/if}}enum {{id}} {
+    {{#each members}}
+    {{#if documentation}}
+{{indent documentation 1}}
+    {{/if}}
+    {{id}} = {{value}}{{#unless @last}},{{/unless}}
+    {{/each}}
+}
+{{#if export.default}}
+export default {{id}};
+{{/if}}
 {{/each}}
 {{#each constants}}
 {{#if documentation}}
 {{indent documentation 0}}
 {{/if}}
-{{#unless export.default}}
-export {{keyword}} {{id}}: {{type}};
-{{else}}
-declare const {{id}}: {{type}};
+{{#if export.default}}
+declare const {{id}}: {{> valueType tabs=0}};
 export default {{id}};
-{{/unless}}
+{{else}}
+{{#if export}}export{{else}}declare{{/if}} {{keyword}} {{id}}: {{> valueType tabs=0}};
+{{/if}}
 {{/each}}
 {{#each functions}}
 {{#if documentation}}
 {{indent documentation 0}}
 {{/if}}
-export {{#if export.default}}default {{/if}}function {{id}}{{#if genericTypes}}<{{#each genericTypes}}{{id}}{{#if type}} extends {{type}}{{/if}}{{#if default}} = {{default}}{{/if}}{{#unless @last}}, {{/unless}}{{/each}}>{{/if}}({{#each arguments}}{{id}}{{#if optional}}?{{/if}}: {{type}}{{#unless @last}}, {{/unless}}{{/each}}): {{returns}};
+{{> modifiers}}function {{id}}{{> genericTypes}}({{> arguments tabs=0}}): {{returns}};
 {{/each}}
 {{#each classes}}
 {{#if documentation}}
 {{indent documentation 0}}
 {{/if}}
-export {{#if export.default}}default {{/if}}{{keyword}} {{id}}{{#if genericTypes}}<{{#each genericTypes}}{{id}}{{#if type}} extends {{type}}{{/if}}{{#if default}} = {{default}}{{/if}}{{#unless @last}}, {{/unless}}{{/each}}>{{/if}} {{#if extends.length}}extends {{join extends ", "}} {{/if}}{{#if implements.length}}implements {{join implements ", "}} {{/if}}{
+{{> modifiers}}{{keyword}}{{#if id}} {{id}}{{/if}}{{> genericTypes}} {{#if extends.length}}extends {{join extends ", "}} {{/if}}{{#if implements.length}}implements {{join implements ", "}} {{/if}}{
     {{#each members}}
     {{#if documentation}}
 {{indent documentation 1}}
     {{/if}}
-    {{#if (eq visibility "protected")}}protected {{/if}}{{#if static}}static {{/if}}{{id}}: {{type}};
+    {{#if (eq visibility "protected")}}protected {{/if}}{{#if static}}static {{/if}}{{#if readonly}}readonly {{/if}}{{id}}: {{> valueType tabs=1}};
     {{/each}}
     {{#each methods}}
     {{#if documentation}}
 {{indent documentation 1}}
     {{/if}}
-    {{#if (eq visibility "protected")}}protected {{/if}}{{#if static}}static {{/if}}{{#if abstract}}abstract {{/if}}{{#if property}}{{property}} {{/if}}{{id}}{{#if genericTypes}}<{{#each genericTypes}}{{id}}{{#if type}} extends {{type}}{{/if}}{{#if default}} = {{default}}{{/if}}{{#unless @last}}, {{/unless}}{{/each}}>{{/if}}({{#each arguments}}{{id}}{{#if optional}}?{{/if}}: {{type}}{{#unless @last}}, {{/unless}}{{/each}}){{#if returns}}: {{returns}}{{/if}};
+    {{#if (eq visibility "protected")}}protected {{/if}}{{#if static}}static {{/if}}{{#if abstract}}abstract {{/if}}{{#if property}}{{property}} {{/if}}{{id}}{{> genericTypes}}({{> arguments tabs=1}}){{#if returns}}: {{returns}}{{/if}};
     {{/each}}
 }
 {{/each}}
 {{#each types}}
-export type {{id}} = {{#unless properties.length}}{{type}}{{else}}{
+export type {{id}}{{> genericTypes}} = {{#unless properties.length}}{{type}}{{else}}{
     {{#each properties}}
     {{#if description}}
 {{indent description 1}}
     {{/if}}
-    {{id}}{{#if optional}}?{{/if}}: {{type}};
+    {{id}}{{#if optional}}?{{/if}}: {{indentType type 1}};
     {{/each}}
 }{{/unless}};
 {{/each}}
 {{#each exportStatements}}
-{{this}};
+{{#if raw}}
+{{raw}};
+{{else if default}}
+export default {{default}};
+{{else}}
+export {{#if specifiers.length}}{ {{#each specifiers}}{{id}}{{#if alias}} as {{alias}}{{/if}}{{#unless @last}}, {{/unless}}{{/each}} }{{else}}{}{{/if}};
+{{/if}}
 {{/each}}
 {{#each importStatements}}
-import {{#if wildcard}}* as {{/if}}{{#if default}}{{default}}{{#if import.length}},{{/if}} {{/if}}{{#if import.length}}{ {{join import ", "}} } {{/if}}from {{from}};
+import {{#if typeOnly}}type {{/if}}{{#if wildcard}}* as {{/if}}{{#if default}}{{default}}{{#if import.length}},{{/if}} {{/if}}{{#if import.length}}{ {{#each import}}{{id}}{{#if alias}} as {{alias}}{{/if}}{{#unless @last}}, {{/unless}}{{/each}} } {{/if}}from {{from}};
 {{/each}}

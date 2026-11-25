@@ -1,41 +1,98 @@
 JSDOC {
-    DocComment = "/**" Body "*/"
-    
-    Body = (Tag | ~"*/" any)*
+    docComment = "/**" (tag | ~"*/" any)* "*/"
 
-    Tag = TagWithZeroArguments | TagWithOneArgument | TagWithTwoArguments | TagWithThreeArguments | Template
+    tag = modifierTag
+        | typeTag
+        | enumTag
+        | extendsTag
+        | paramTag
+        | propertyTag
+        | typedefTag
+        | templateTag
+        | importTag
 
-    TagWithZeroArguments = "@internal"
-                         | "@interface"
-                         | "@abstract"
-                         | "@protected"
-                         | "@private"
-                         | "@overload"
+    modifierTag = "@" modifierTagName ~idPart
 
-    TagWithOneArgument = "@implements" TypeInBraces
-                       | "@type" TypeInBraces
-                       | "@returns" TypeInBraces
-                       | "@enum" TypeInBraces
+    modifierTagName = "internal"
+                    | "interface"
+                    | "abstract"
+                    | "protected"
+                    | "private"
+                    | "overload"
+                    | "readonly"
 
-    TagWithTwoArguments = "@param" TypeInBraces (id | optionalId)
-                        | "@typedef" TypeInBraces IdWithAngleBrackets
-    
-    TagWithThreeArguments = "@property" TypeInBraces (id | optionalId) description
+    typeTag = "@" typeTagName ~idPart blank typeExpression
 
-    Template = "@template" TypeInBraces? id                                          -- template
-             | "@template" TypeInBraces? "[" id "=" (TypeInBrackets | ~"]" any)* "]" -- templateWithDefault
+    typeTagName = "implements"
+                | "type"
+                | "returns"
+                | "return"
 
-    TypeInBrackets = "[" (TypeInBrackets | ~"]" any)* "]"
+    enumTag = "@enum" ~idPart (blank typeExpression)?
 
-    TypeInAngleBrackets = "<" (TypeInAngleBrackets | ~">" any)+ ">"
+    extendsTag = "@" extendsTagName ~idPart blank (typeExpression | typeReference)
 
-    TypeInBraces = "{" (TypeInBraces | ~"}" any)* "}"
+    extendsTagName = "extends"
+                   | "augments"
 
-    IdWithAngleBrackets = id TypeInAngleBrackets?
+    paramTag = "@param" ~idPart blank typeExpression blank parameterName
 
-    id = (letter | "_" | "$") (letter | digit | "_" | "$")*
+    propertyTag = "@" propertyTagName ~idPart blank typeExpression blank parameterName blank description
 
-    optionalId = "[" id "]"
+    propertyTagName = "property"
+                    | "prop"
+
+    typedefTag = "@typedef" ~idPart blank typeExpression blank typedefName
+
+    templateTag = "@template" ~idPart blank (typeExpression blank)? templateParameter (blank "," blank templateParameter)*
+
+    templateParameter = "[" blank id blank "=" defaultValue "]" -- withDefault
+                      | id                                      -- withoutDefault
+
+    defaultValue = (squareBrackets | ~"]" any)*
+
+    importTag = "@import" ~idPart multilineBlank importClause multilineBlank "from" ~idPart multilineBlank moduleName
+
+    importClause = id multilineBlank "," multilineBlank namedImports -- defaultAndNamed
+                 | "*" multilineBlank "as" ~idPart multilineBlank id  -- namespace
+                 | namedImports                                       -- named
+                 | id                                                 -- default
+
+    namedImports = "{" multilineBlank importSpecifiers? multilineBlank ","? multilineBlank "}"
+
+    importSpecifiers = importSpecifier (multilineBlank "," multilineBlank importSpecifier)*
+
+    importSpecifier = id (multilineBlank "as" ~idPart multilineBlank id)?
+
+    moduleName = "\"" (~"\"" any)* "\""
+               | "'" (~"'" any)* "'"
+
+    typeExpression = "{" (typeExpression | ~"}" any)* "}"
+
+    parameterName = "[" blank qualifiedName blank ("=" defaultValue)? "]" -- optional
+                  | qualifiedName                                         -- required
+
+    qualifiedName = id ("[]"? "." id)*
+
+    typedefName = id angleBrackets?
+
+    typeReference = id ("." id)* angleBrackets?
 
     description = (~"@" ~"*/" any)*
+
+    squareBrackets = "[" (squareBrackets | ~"]" any)* "]"
+
+    angleBrackets = "<" (angleBrackets | ~">" any)+ ">"
+
+    blank = (" " | "\t" | "\n" | "\r")*
+
+    multilineBlank = (" " | "\t" | lineContinuation)*
+
+    lineContinuation = ("\r\n" | "\n" | "\r") (" " | "\t")* ("*" ~"/")?
+
+    id = idStart idPart*
+
+    idStart = letter | "_" | "$"
+
+    idPart = idStart | digit
 }
