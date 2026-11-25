@@ -1,6 +1,6 @@
 {
     "name": "jsdoc-to-d-ts",
-    "version": "1.0.0-alpha.1",
+    "version": "1.0.0-alpha.2",
     "description": "Lightweight transpiler to convert javascript with jsdoc to typescript's .d.ts files.",
     "author": {
         "name": "Davide Casale",
